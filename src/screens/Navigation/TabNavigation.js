@@ -5,6 +5,7 @@ import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 
 import Home from '../Home';
 import Groups from '../Groups';
+import Friends from '../Friends';
 
 const Tab = createBottomTabNavigator();
 
@@ -17,7 +18,7 @@ const TabNavigation = () => {
           height: 70,
           borderTopWidth: 0,
           elevation: 24,
-          shadowColor: '#FFF',
+          shadowColor: 'blue',
         },
       }}>
       <Tab.Screen
@@ -44,6 +45,39 @@ const TabNavigation = () => {
                 style={{
                   height: 25,
                   width: 25,
+                  position: 'relative',
+                  top: 5,
+                }}
+                resizeMode={'stretch'}
+              />
+            ),
+        }}
+      />
+
+      <Tab.Screen
+        name="Friends"
+        component={Friends}
+        options={{
+          headerShown: false,
+          tabBarLabel: '',
+          tabBarIcon: ({focused}) =>
+            focused ? (
+              <Image
+                source={require('../../../assets/images/friend-active.png')}
+                style={{
+                  height: 36,
+                  width: 29,
+                  position: 'relative',
+                  top: 5,
+                }}
+                resizeMode={'stretch'}
+              />
+            ) : (
+              <Image
+                source={require('../../../assets/images/friend-inactive.png')}
+                style={{
+                  height: 25,
+                  width: 29,
                   position: 'relative',
                   top: 5,
                 }}

@@ -1,12 +1,10 @@
-import React, {useState} from 'react';
+import React, {useState, useRef} from 'react';
 import {StyleSheet, Text, View, Image, TouchableOpacity} from 'react-native';
-// import ProgressCircle from 'react-native-progress-circle';
-// import CircularProgress from 'react-native-circular-progress-indicator';
 import {AnimatedCircularProgress} from 'react-native-circular-progress';
-// import Animated from 'react-native-reanimated';
-// import BottomSheet from 'reanimated-bottom-sheet';
+import RBSheet from 'react-native-raw-bottom-sheet';
 
 const Home = () => {
+  const bottomSheetRef = useRef(null);
   const [index, setIndex] = useState(0);
   const handleonTabChange = () => {
     setIndex(index == 0 ? 1 : 0);
@@ -118,7 +116,13 @@ const Home = () => {
           justifyContent: 'space-between',
         }}>
         <Text style={{color: '#000000', fontSize: 14}}>Today's Ranking</Text>
-        <Text style={{color: '#38acff', fontSize: 14}}>See All</Text>
+        <TouchableOpacity
+          style={{height: 30, width: 60}}
+          onPress={() => bottomSheetRef?.current?.open()}>
+          <Text style={{color: '#38acff', fontSize: 14, textAlign: 'right'}}>
+            See All
+          </Text>
+        </TouchableOpacity>
       </View>
       <View style={{flexDirection: 'row'}}>
         <View
@@ -160,10 +164,7 @@ const Home = () => {
           style={{
             height: 137,
             width: 101,
-            // backgroundColor: '#ffffff',
             borderRadius: 5,
-            // shadowColor: '#000',
-            // elevation: 24,
             padding: 5,
             alignItems: 'center',
             justifyContent: 'center',
@@ -175,6 +176,61 @@ const Home = () => {
           </Text>
         </View>
       </View>
+
+      <RBSheet
+        ref={bottomSheetRef}
+        height={300}
+        openDuration={250}
+        closeOnDragDown={true}
+        closeOnPressMask={false}
+        animationType={'slide'}
+        customStyles={{
+          container: {
+            padding: 5,
+            height: 530,
+            flex: 1,
+            backgroundColor: '#ffffff',
+            borderRadius: 30,
+          },
+          draggableIcon: {
+            backgroundColor: '#003e6b',
+          },
+        }}>
+        {index == 0 ? (
+          <View>
+            <Text style={{color: '#003e6b', fontSize: 18, textAlign: 'center'}}>
+              Today's Ranking
+            </Text>
+            <View style={{padding: 10, marginTop: 10}}>
+              <View style={styles.bootSheetCardView}>
+                <Image
+                  style={{marginVertical: 10}}
+                  source={require('../../assets/images/friend-profile.png')}
+                />
+                <Text style={{color: '#040103'}}>Me</Text>
+                <Text style={{color: '#38acff'}}>0</Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View>
+            <Text style={{color: '#003e6b', fontSize: 18, textAlign: 'center'}}>
+              Week's Ranking
+            </Text>
+            <View style={{padding: 10, marginTop: 10}}>
+              <View style={styles.bootSheetCardView}>
+                <Image
+                  style={{marginVertical: 10}}
+                  source={require('../../assets/images/friend-profile.png')}
+                />
+
+                <Text style={{color: '#040103'}}>Me</Text>
+                <Text style={{color: '#38acff'}}>0</Text>
+              </View>
+            </View>
+          </View>
+        )}
+      </RBSheet>
     </View>
   );
 };
@@ -193,7 +249,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabView: {
-    // height: 50,
     height: 48,
     marginTop: 25,
     width: '100%',
@@ -202,7 +257,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     flexDirection: 'row',
     marginVertical: 5,
-    //   justifyContent: 'space-between',
   },
   btn: {
     backgroundColor: '#FFF',
@@ -216,5 +270,16 @@ const styles = StyleSheet.create({
   },
   btnText: {
     color: '#002138',
+  },
+  bootSheetCardView: {
+    height: 126,
+    width: 101,
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    shadowColor: 'blue',
+    elevation: 6,
+    padding: 5,
+    alignItems: 'center',
+    marginHorizontal: 5,
   },
 });
