@@ -4,6 +4,7 @@ import {NavigationContainer} from '@react-navigation/native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 
 import Home from '../Home';
+import Groups from '../Groups';
 
 const Tab = createBottomTabNavigator();
 
@@ -25,18 +26,63 @@ const TabNavigation = () => {
         options={{
           headerShown: false,
           tabBarLabel: '',
-          tabBarIcon: ({focused}) => (
-            <Image
-              source={require('../../../assets/images/home.png')}
-              style={{
-                height: 36,
-                width: 25,
-                position: 'relative',
-                top: 5,
-              }}
-              resizeMode={'stretch'}
-            />
-          ),
+          tabBarIcon: ({focused}) =>
+            focused ? (
+              <Image
+                source={require('../../../assets/images/home.png')}
+                style={{
+                  height: 36,
+                  width: 25,
+                  position: 'relative',
+                  top: 5,
+                }}
+                resizeMode={'stretch'}
+              />
+            ) : (
+              <Image
+                source={require('../../../assets/images/home-inactive.png')}
+                style={{
+                  height: 25,
+                  width: 25,
+                  position: 'relative',
+                  top: 5,
+                }}
+                resizeMode={'stretch'}
+              />
+            ),
+        }}
+      />
+
+      <Tab.Screen
+        name="Groups"
+        component={Groups}
+        options={{
+          headerShown: false,
+          tabBarLabel: '',
+          tabBarIcon: ({focused}) =>
+            focused ? (
+              <Image
+                source={require('../../../assets/images/group.png')}
+                style={{
+                  height: 36,
+                  width: 29,
+                  position: 'relative',
+                  top: 5,
+                }}
+                resizeMode={'stretch'}
+              />
+            ) : (
+              <Image
+                source={require('../../../assets/images/group-inactive.png')}
+                style={{
+                  height: 25,
+                  width: 29,
+                  position: 'relative',
+                  top: 5,
+                }}
+                resizeMode={'stretch'}
+              />
+            ),
         }}
       />
     </Tab.Navigator>

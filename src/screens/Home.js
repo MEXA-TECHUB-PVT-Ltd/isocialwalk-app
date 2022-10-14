@@ -3,6 +3,9 @@ import {StyleSheet, Text, View, Image, TouchableOpacity} from 'react-native';
 // import ProgressCircle from 'react-native-progress-circle';
 // import CircularProgress from 'react-native-circular-progress-indicator';
 import {AnimatedCircularProgress} from 'react-native-circular-progress';
+// import Animated from 'react-native-reanimated';
+// import BottomSheet from 'reanimated-bottom-sheet';
+
 const Home = () => {
   const [index, setIndex] = useState(0);
   const handleonTabChange = () => {
