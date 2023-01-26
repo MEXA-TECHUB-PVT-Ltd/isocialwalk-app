@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "42615399421",
+    "firebase_url": "https://phonic-impact-308908-default-rtdb.firebaseio.com",
+    "project_id": "phonic-impact-308908",
+    "storage_bucket": "phonic-impact-308908.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:42615399421:android:a1366e71241e2761d4ef94",
+        "android_client_info": {
+          "package_name": "com.isocialwalkapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "42615399421-ffl4sj3ngvhfmst2i82ovbv2rfpgpqai.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.isocialwalkapp",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "42615399421-el0cnm0ckmshdh4aqo25u40fonp92p8o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCC7TfkWf6dRR9FAP6oO9oKfBx6ghDZDEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "42615399421-el0cnm0ckmshdh4aqo25u40fonp92p8o.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
