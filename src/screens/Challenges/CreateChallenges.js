@@ -944,6 +944,7 @@ const CreateChallenges = ({ navigation, route }) => {
             }}
           >
             <FlatList
+              keyboardShouldPersistTaps="handled"
               data={selectedChallengeType == "group" ? groupsList : membersList}
               numColumns={3}
               // scrollEnabled={false}

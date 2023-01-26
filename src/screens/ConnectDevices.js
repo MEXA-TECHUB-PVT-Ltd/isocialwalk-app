@@ -311,6 +311,7 @@ const ConnectDevices = ({
         </View> */}
 
           <FlatList
+            keyboardShouldPersistTaps="handled"
             style={{ marginBottom: 10, marginTop: 30 }}
             data={devicesList}
             keyExtractor={(item, index) => index.toString()}

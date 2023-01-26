@@ -234,11 +234,6 @@ const Challenges = ({
         } else {
           // setGroupsList([]);
           setGroupsList(joinedGroupsList);
-          Snackbar.show({
-            // text: result?.Message,
-            text: "No Challenge Found",
-            duration: Snackbar.LENGTH_SHORT,
-          });
         }
       })
       .catch((error) => {
@@ -691,10 +686,10 @@ const Challenges = ({
             setJoinedChallenge(list);
           } else {
             setJoinedChallenge([]);
-            Snackbar.show({
-              text: "You have not joined any challange yet.",
-              duration: Snackbar.LENGTH_SHORT,
-            });
+            // Snackbar.show({
+            //   text: "You have not joined any challange yet.",
+            //   duration: Snackbar.LENGTH_SHORT,
+            // });
           }
         })
         .catch((error) => {
@@ -1003,10 +998,12 @@ const Challenges = ({
     });
   };
 
-  const handleSearch = (searchText) => {
+  const handleSearch = async (searchText) => {
+    let user_id = await AsyncStorage.getItem("user_id");
     if (searchText) {
       let data = {
         name: searchText,
+        userid: user_id,
       };
       var requestOptions = {
         method: "POST",
@@ -1016,15 +1013,24 @@ const Challenges = ({
       fetch(api.search_challenges, requestOptions)
         .then((response) => response.json())
         .then(async (result) => {
-          if (result[0]?.error == false || result[0]?.error == "false") {
-            let responseList = result[0]?.Challenges
-              ? result[0]?.Challenges
-              : [];
+          if (result == null) {
+            setSearchResults([]);
+            Snackbar.show({
+              text: "No Record Found",
+              duration: Snackbar.LENGTH_SHORT,
+            });
+          } else if (result[0]?.message == "No Record found") {
+            setSearchResults([]);
+            Snackbar.show({
+              text: "No Record found",
+              duration: Snackbar.LENGTH_SHORT,
+            });
+          } else {
+            let responseList = result ? result : [];
             // setSearchResults(groupsList);
             let list = [];
             if (responseList?.length > 0) {
               let logged_in_user_id = await AsyncStorage.getItem("user_id");
-
               for (const element of responseList) {
                 let challenge_status = await getChallengeStatus(
                   logged_in_user_id,
@@ -1033,51 +1039,19 @@ const Challenges = ({
 
                 let obj = {
                   id: element?.id,
-                  created_by_user_id: element?.created_by_user_id,
-                  image: element?.image
-                    ? BASE_URL_Image + "/" + element?.image
+                  // created_by_user_id: element?.created_by_user_id,
+                  image: element?.image_link
+                    ? BASE_URL_Image + "/" + element?.image_link
                     : "",
+                  created_by_user_id: element["Admin id"],
                   name: element?.name,
                   challenge_type: element?.challenge_type,
                   status: challenge_status,
-                  // status:
-                  //   logged_in_user_id == element?.created_by_user_id
-                  //     ? true
-                  //     : false,
                 };
                 list.push(obj);
               }
-
-              // responseList.forEach((element) => {
-              //   let obj = {
-              //     id: element?.id,
-              //     created_by_user_id: element?.created_by_user_id,
-              //     image: element?.image
-              //       ? BASE_URL_Image + "/" + element?.image
-              //       : "",
-              //     name: element?.name,
-              //     challenge_type: element?.challenge_type,
-              //     status:
-              //       logged_in_user_id == element?.created_by_user_id
-              //         ? true
-              //         : false,
-              //   };
-              //   list.push(obj);
-              // });
-            } else {
-              // Snackbar.show({
-              //   text: "No Record Found",
-              //   duration: Snackbar.LENGTH_SHORT,
-              // });
             }
             setSearchResults(list);
-          } else {
-            console.log("else :::", result[0]?.Message);
-            setSearchResults([]);
-            Snackbar.show({
-              text: result[0]?.Message,
-              duration: Snackbar.LENGTH_SHORT,
-            });
           }
         })
         .catch((error) => console.log("error in searching  group ", error))
@@ -1411,6 +1385,7 @@ const Challenges = ({
                   }}
                 >
                   <FlatList
+                    keyboardShouldPersistTaps="handled"
                     data={searchResults}
                     numColumns={3}
                     scrollEnabled={false}
@@ -1439,40 +1414,45 @@ const Challenges = ({
                     }}
                     renderItem={(item) => {
                       return (
-                        <TouchableOpacity
-                          onPress={() =>
-                            navigation.navigate("ChallengesDetail", {
-                              item: item?.item,
-                            })
-                          }
-                          style={{ ...styles.cardView, width: "28.7%" }}
-                        >
-                          {item?.item?.image ? (
-                            <Image
-                              source={{ uri: item?.item?.image }}
-                              style={{
-                                marginVertical: 8,
-                                width: 44,
-                                height: 44,
-                                borderRadius: 44,
-                                backgroundColor: "#ccc",
-                              }}
-                            />
-                          ) : (
-                            <Image
-                              source={require("../../../assets/images/Challenge.png")}
-                              style={{
-                                marginVertical: 8,
-                                width: 44,
-                                height: 44,
-                                borderRadius: 44,
-                                backgroundColor: "#ccc",
-                              }}
-                            />
-                          )}
-                          <Text style={styles.cardText} numberOfLines={2}>
-                            {item?.item?.name}
-                          </Text>
+                        <View style={{ ...styles.cardView, width: "28.7%" }}>
+                          <TouchableOpacity
+                            style={{
+                              justifyContent: "center",
+                              alignItems: "center",
+                            }}
+                            onPress={() =>
+                              navigation.navigate("ChallengesDetail", {
+                                item: item?.item,
+                              })
+                            }
+                          >
+                            {item?.item?.image ? (
+                              <Image
+                                source={{ uri: item?.item?.image }}
+                                style={{
+                                  marginVertical: 8,
+                                  width: 44,
+                                  height: 44,
+                                  borderRadius: 44,
+                                  backgroundColor: "#ccc",
+                                }}
+                              />
+                            ) : (
+                              <Image
+                                source={require("../../../assets/images/Challenge.png")}
+                                style={{
+                                  marginVertical: 8,
+                                  width: 44,
+                                  height: 44,
+                                  borderRadius: 44,
+                                  backgroundColor: "#ccc",
+                                }}
+                              />
+                            )}
+                            <Text style={styles.cardText} numberOfLines={2}>
+                              {item?.item?.name}
+                            </Text>
+                          </TouchableOpacity>
                           <View
                             style={{
                               justifyContent: "flex-end",
@@ -1551,7 +1531,7 @@ const Challenges = ({
                               </TouchableOpacity>
                             )}
                           </View>
-                        </TouchableOpacity>
+                        </View>
                       );
                     }}
                   />
@@ -1615,48 +1595,56 @@ const Challenges = ({
                 >
                   {isSuggestedVisible && (
                     <FlatList
+                      keyboardShouldPersistTaps="handled"
                       data={suggestedChallenges}
                       keyExtractor={(item, index) => index.toString()}
                       horizontal
                       showsHorizontalScrollIndicator={false}
                       renderItem={(item) => {
                         return (
-                          <TouchableOpacity
-                            onPress={() =>
-                              navigation.navigate("ChallengesDetail", {
-                                item: item?.item,
-                              })
-                            }
+                          <View
                             style={{
                               ...styles.cardView,
                               width: 101,
                             }}
                           >
-                            {item?.item?.image ? (
-                              <Image
-                                source={{ uri: item?.item?.image }}
-                                style={{
-                                  marginVertical: 8,
-                                  height: 44,
-                                  width: 44,
-                                  borderRadius: 44,
-                                  backgroundColor: "#ccc",
-                                }}
-                              />
-                            ) : (
-                              <Image
-                                source={require("../../../assets/images/Challenge.png")}
-                                style={{
-                                  marginVertical: 8,
-                                  height: 44,
-                                  width: 44,
-                                  borderRadius: 44,
-                                }}
-                              />
-                            )}
-                            <Text style={styles.cardText} numberOfLines={2}>
-                              {item?.item?.name}
-                            </Text>
+                            <TouchableOpacity
+                              style={{
+                                justifyContent: "center",
+                                alignItems: "center",
+                              }}
+                              onPress={() =>
+                                navigation.navigate("ChallengesDetail", {
+                                  item: item?.item,
+                                })
+                              }
+                            >
+                              {item?.item?.image ? (
+                                <Image
+                                  source={{ uri: item?.item?.image }}
+                                  style={{
+                                    marginVertical: 8,
+                                    height: 44,
+                                    width: 44,
+                                    borderRadius: 44,
+                                    backgroundColor: "#ccc",
+                                  }}
+                                />
+                              ) : (
+                                <Image
+                                  source={require("../../../assets/images/Challenge.png")}
+                                  style={{
+                                    marginVertical: 8,
+                                    height: 44,
+                                    width: 44,
+                                    borderRadius: 44,
+                                  }}
+                                />
+                              )}
+                              <Text style={styles.cardText} numberOfLines={2}>
+                                {item?.item?.name}
+                              </Text>
+                            </TouchableOpacity>
                             <View
                               style={{
                                 justifyContent: "flex-end",
@@ -1699,7 +1687,7 @@ const Challenges = ({
                                 </TouchableOpacity>
                               )}
                             </View>
-                          </TouchableOpacity>
+                          </View>
                         );
                       }}
                     />
@@ -1760,6 +1748,7 @@ const Challenges = ({
                         }}
                       >
                         <FlatList
+                          keyboardShouldPersistTaps="handled"
                           data={challengesList}
                           numColumns={3}
                           showsVerticalScrollIndicator={false}
@@ -1844,6 +1833,7 @@ const Challenges = ({
                     }}
                   >
                     <FlatList
+                      keyboardShouldPersistTaps="handled"
                       data={joinedChallenge}
                       numColumns={3}
                       showsVerticalScrollIndicator={false}
@@ -1967,6 +1957,7 @@ const Challenges = ({
               }}
             >
               <FlatList
+                keyboardShouldPersistTaps="handled"
                 data={groupsList}
                 numColumns={3}
                 showsVerticalScrollIndicator={false}

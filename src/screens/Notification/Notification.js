@@ -150,7 +150,11 @@ const Notification = ({ navigation }) => {
           for (const element of notificationList) {
             let user_info = await getUser_Info(element?.from_id);
             let notification_detail = await getNotification_Detail(element?.id);
-            if (user_info && notification_detail != false) {
+            if (
+              notification_detail?.noti_type == "challenge admin added group"
+            ) {
+              //do nothing
+            } else if (user_info && notification_detail != false) {
               let obj = {
                 ...element,
                 user_info: {
@@ -589,6 +593,7 @@ const Notification = ({ navigation }) => {
       noti_type_id: notificationId,
       date: new Date(),
     };
+
     var requestOptions = {
       method: "POST",
       body: JSON.stringify(obj),
@@ -597,6 +602,7 @@ const Notification = ({ navigation }) => {
     fetch(api.group_admin_send_request_to_challenge_owner, requestOptions)
       .then((response) => response.json())
       .then((result) => {
+        console.log("result........", result);
         // if (result[0]?.error == false || result[0]?.error == "false") {
         Snackbar.show({
           text: "Request Send to challenge admin successfully",
@@ -902,7 +908,8 @@ const Notification = ({ navigation }) => {
       item?.noti_type == "group challenge response" ||
       item?.noti_type == "challenge admin to user" ||
       item?.noti_type == "admin to user for challenges" ||
-      item?.noti_type == "admin to indiviual challenge"
+      item?.noti_type == "admin to indiviual challenge" ||
+      item?.noti_type == "User to direct challenge owner"
     ) {
       let challenge_id = item?.notification_detail?.challenge_id;
       setLoading(true);
@@ -1033,6 +1040,7 @@ const Notification = ({ navigation }) => {
                 }}
               >
                 <FlatList
+                  keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
                   data={notificationsList}
                   keyExtractor={(item, index) => index.toString()}
@@ -1097,7 +1105,9 @@ const Notification = ({ navigation }) => {
                           item?.item?.noti_type == "group challenge response" ||
                           item?.item?.noti_type ==
                             "user to group admin for challenge joining" ||
-                          item?.item?.noti_type == "challenge admin to user" ? (
+                          item?.item?.noti_type == "challenge admin to user" ||
+                          item?.item?.noti_type ==
+                            "User to direct challenge owner" ? (
                           //challenge notification
                           <Image
                             source={require("../../../assets/images/Challenge.png")}
@@ -1168,7 +1178,9 @@ const Notification = ({ navigation }) => {
                                   item?.item?.noti_type ==
                                     "group challenge response" ||
                                   item?.item?.noti_type ==
-                                    "challenge admin to user"
+                                    "challenge admin to user" ||
+                                  item?.item?.noti_type ==
+                                    "User to direct challenge owner"
                                 ? "Challenge Request"
                                 : "other"}
                             </Text>
@@ -1270,6 +1282,9 @@ const Notification = ({ navigation }) => {
                                     ? `you rejected challenge joined request`
                                     : `${item?.item?.user_info?.first_name} joined your challenge`
                                 }`
+                              : item?.item?.noti_type ==
+                                "User to direct challenge owner"
+                              ? `${item?.item?.user_info?.first_name} wants to join group challenge`
                               : "other"}
                           </Text>
                         </TouchableOpacity>
@@ -1470,143 +1485,161 @@ const Notification = ({ navigation }) => {
             },
           }}
         >
-          <Text
-            style={{
-              color: "#003e6b",
-              fontSize: 18,
-              fontFamily: "Rubik-Regular",
-              marginTop: 5,
-            }}
-          >
-            Group Request
-          </Text>
-          {selected_friend_profile ? (
-            <Image
-              source={{ uri: selected_friend_profile }}
+          <ScrollView style={{ flex: 1, width: "100%" }}>
+            <TouchableOpacity
+              activeOpacity={1}
               style={{
-                marginTop: 20,
-                marginBottom: 10,
-                width: 110,
-                height: 110,
-                borderRadius: 110,
-                backgroundColor: "#ccc",
-                resizeMode: "contain",
-              }}
-            />
-          ) : (
-            <Image
-              source={profileImage}
-              style={{
-                marginTop: 20,
-                marginBottom: 10,
-                width: 110,
-                height: 110,
-                resizeMode: "contain",
-              }}
-            />
-          )}
-          <Text
-            style={{
-              color: "#000000",
-              fontSize: 16,
-              fontFamily: "Rubik-Medium",
-            }}
-          >
-            {selected_friend_name}
-          </Text>
-
-          <View
-            style={{
-              width: "87%",
-              justifyContent: "space-between",
-              flexDirection: "row",
-              marginVertical: 8,
-            }}
-          >
-            <Text
-              style={{
-                color: "#000000",
-                fontSize: 14,
-                fontFamily: "Rubik-Medium",
-              }}
-            >
-              Request For :
-            </Text>
-            <Text
-              style={{
-                color: "#000000",
-                fontSize: 14,
-                fontFamily: "Rubik-Medium",
-              }}
-            >
-              {selected_group_name}
-            </Text>
-          </View>
-
-          {/* <Text
-          style={{
-            color: "#000000",
-            fontSize: 14,
-            fontFamily: "Rubik-Medium",
-          }}
-        >
-          status : {selected_group_status}
-        </Text> */}
-          {selected_group_status == "requested" ? (
-            <View style={{ width: "100%", alignItems: "center" }}>
-              <TouchableOpacity
-                style={styles.btnBottomSheet}
-                onPress={() => {
-                  // handleApproveFriend(selected_friend_id)
-                  hanldeApprove_GroupRequest(
-                    selected_noti_id,
-                    selected_group_id
-                  );
-                }}
-              >
-                <Text style={styles.btnText}>Approve Request</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  ...styles.btnBottomSheet,
-                  backgroundColor: "transparent",
-                  borderWidth: 1,
-                }}
-                // onPress={() => groupRequest_RBSheetRef?.current?.close()}
-                onPress={() =>
-                  handleUnApprove_GroupRequest(
-                    selected_noti_id,
-                    selected_group_id
-                  )
-                }
-              >
-                <Text style={{ ...styles.btnText, color: "#38ACFF" }}>
-                  Ignore Request
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View
-              style={{
-                flex: 1,
                 justifyContent: "center",
                 alignItems: "center",
+                flex: 1,
               }}
             >
               <Text
                 style={{
-                  ...styles.btnText,
-                  fontSize: 15,
-                  fontFamily: "Rubik-Medium",
-                  color: "#38ACFF",
+                  color: "#003e6b",
+                  fontSize: 18,
+                  fontFamily: "Rubik-Regular",
+                  marginTop: 5,
                 }}
               >
-                {selected_group_status == "rejected"
-                  ? "Request Rejected"
-                  : "Request Accepted"}
+                Group Request
               </Text>
-            </View>
-          )}
+              {selected_friend_profile ? (
+                <Image
+                  source={{ uri: selected_friend_profile }}
+                  style={{
+                    marginTop: 20,
+                    marginBottom: 10,
+                    width: 110,
+                    height: 110,
+                    borderRadius: 110,
+                    backgroundColor: "#ccc",
+                    resizeMode: "contain",
+                  }}
+                />
+              ) : (
+                <Image
+                  source={profileImage}
+                  style={{
+                    marginTop: 20,
+                    marginBottom: 10,
+                    width: 110,
+                    height: 110,
+                    resizeMode: "contain",
+                  }}
+                />
+              )}
+              <Text
+                style={{
+                  color: "#000000",
+                  fontSize: 16,
+                  fontFamily: "Rubik-Medium",
+                }}
+              >
+                {selected_friend_name}
+              </Text>
+
+              <View
+                style={{
+                  width: "87%",
+                  justifyContent: "space-between",
+                  flexDirection: "row",
+                  marginVertical: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#000000",
+                    fontSize: 14,
+                    fontFamily: "Rubik-Medium",
+                  }}
+                >
+                  Request For :
+                </Text>
+                <Text
+                  style={{
+                    color: "#000000",
+                    fontSize: 14,
+                    fontFamily: "Rubik-Medium",
+                  }}
+                >
+                  {selected_group_name}
+                </Text>
+              </View>
+
+              {selected_group_status == "requested" ? (
+                <View style={{ width: "100%", alignItems: "center" }}>
+                  <TouchableOpacity
+                    style={styles.btnBottomSheet}
+                    onPress={() => {
+                      // handleApproveFriend(selected_friend_id)
+                      hanldeApprove_GroupRequest(
+                        selected_noti_id,
+                        selected_group_id
+                      );
+                    }}
+                  >
+                    <Text style={styles.btnText}>Approve Request</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{
+                      ...styles.btnBottomSheet,
+                      backgroundColor: "transparent",
+                      borderWidth: 1,
+                    }}
+                    // onPress={() => groupRequest_RBSheetRef?.current?.close()}
+                    onPress={() =>
+                      handleUnApprove_GroupRequest(
+                        selected_noti_id,
+                        selected_group_id
+                      )
+                    }
+                  >
+                    <Text style={{ ...styles.btnText, color: "#38ACFF" }}>
+                      Ignore Request
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View
+                  style={{
+                    flex: 1,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: 100,
+                  }}
+                >
+                  <Text
+                    style={{
+                      ...styles.btnText,
+                      fontSize: 15,
+                      fontFamily: "Rubik-Medium",
+                      color: "#38ACFF",
+                    }}
+                  >
+                    {selected_group_status == "rejected"
+                      ? "Request Rejected"
+                      : "Request Accepted"}
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={{ ...styles.btnBottomSheet, backgroundColor: "#003e6b" }}
+                onPress={() => {
+                  groupRequest_RBSheetRef?.current?.close();
+                  navigation?.navigate("JoinGroup", {
+                    item: {
+                      id: selected_group_id,
+                      type: "notification",
+                    },
+                  });
+                }}
+              >
+                <Text style={styles.btnText}>View Group Detail</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </ScrollView>
         </RBSheet>
         {/*------------------------------------------Challenge Bottom Sheet-------------------------------------------------------------- */}
         <RBSheet
@@ -1631,169 +1664,186 @@ const Notification = ({ navigation }) => {
             },
           }}
         >
-          <Text
-            style={{
-              color: "#003e6b",
-              fontSize: 18,
-              fontFamily: "Rubik-Regular",
-              marginTop: 5,
-            }}
-          >
-            Challenge Request
-          </Text>
-          {selected_friend_profile ? (
-            <Image
-              source={{ uri: selected_friend_profile }}
+          <ScrollView style={{ flex: 1, width: "100%" }}>
+            <TouchableOpacity
+              activeOpacity={1}
               style={{
-                marginTop: 20,
-                marginBottom: 10,
-                width: 110,
-                height: 110,
-                borderRadius: 110,
-                backgroundColor: "#ccc",
-                resizeMode: "contain",
-              }}
-            />
-          ) : (
-            <Image
-              source={profileImage}
-              style={{
-                marginTop: 20,
-                marginBottom: 10,
-                width: 110,
-                height: 110,
-                resizeMode: "contain",
-              }}
-            />
-          )}
-          <Text
-            style={{
-              color: "#000000",
-              fontSize: 16,
-              fontFamily: "Rubik-Medium",
-            }}
-          >
-            {/* Boris Findlay */}
-            {selected_friend_name}
-          </Text>
-          <View
-            style={{
-              width: "87%",
-              justifyContent: "space-between",
-              flexDirection: "row",
-              marginVertical: 10,
-            }}
-          >
-            <Text
-              style={{
-                color: "#000000",
-                fontSize: 14,
-                fontFamily: "Rubik-Medium",
-              }}
-            >
-              Request For :
-            </Text>
-            <Text
-              style={{
-                color: "#000000",
-                fontSize: 14,
-                fontFamily: "Rubik-Medium",
-              }}
-            >
-              {selected_challenge_name}
-            </Text>
-          </View>
-          {/* <Text
-          style={{
-            color: "#000000",
-            fontSize: 14,
-            fontFamily: "Rubik-Medium",
-          }}
-        >
-          status : {selected_challenge_status}
-        </Text> */}
-
-          {selected_challenge_status == "requested" ? (
-            <View style={{ width: "100%", alignItems: "center" }}>
-              {selected_noti_type ==
-              "user to group admin for challenge joining" ? (
-                <TouchableOpacity
-                  style={styles.btnBottomSheet}
-                  onPress={() => {
-                    handle_Join_Challenge_Request(selected_noti_id);
-                  }}
-                >
-                  <Text style={styles.btnText}>Join Challenge</Text>
-                </TouchableOpacity>
-              ) : selected_noti_type == "group admin to challenge owner" ? (
-                <TouchableOpacity
-                  style={styles.btnBottomSheet}
-                  onPress={() => {
-                    handleApprove_GroupChallenge_Request(selected_noti_id);
-                  }}
-                >
-                  <Text style={styles.btnText}>
-                    Approve Group Challenge Request
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.btnBottomSheet}
-                  onPress={() => {
-                    handleApprove_ChallengeRequest(selected_noti_id);
-                  }}
-                >
-                  <Text style={styles.btnText}>Approve Request</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                style={{
-                  ...styles.btnBottomSheet,
-                  backgroundColor: "transparent",
-                  borderWidth: 1,
-                }}
-                onPress={() => {
-                  selected_noti_type ==
-                  "user to group admin for challenge joining"
-                    ? handle_Ignore_Join_Challenge_Request(selected_noti_id)
-                    : selected_noti_type == "group admin to challenge owner"
-                    ? handleReject_GroupChallenge_Request(selected_noti_id)
-                    : handleIgnore_ChallengeRequest(selected_noti_id);
-                }}
-              >
-                <Text style={{ ...styles.btnText, color: "#38ACFF" }}>
-                  Ignore Request
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View
-              style={{
-                flex: 1,
                 justifyContent: "center",
                 alignItems: "center",
+                flex: 1,
               }}
             >
               <Text
                 style={{
-                  ...styles.btnText,
-                  fontSize: 15,
-                  fontFamily: "Rubik-Medium",
-                  color: "#38ACFF",
+                  color: "#003e6b",
+                  fontSize: 18,
+                  fontFamily: "Rubik-Regular",
+                  marginTop: 5,
                 }}
               >
-                {selected_noti_type == "challenge admin to user"
-                  ? selected_challenge_status == "membered"
-                    ? "Added"
-                    : selected_challenge_status == "rejected"
-                    ? "Request Rejected"
-                    : "Request Accepted"
-                  : selected_challenge_status == "rejected"
-                  ? "Request Rejected"
-                  : "Request Accepted"}
+                Challenge Request
               </Text>
-            </View>
-          )}
+              {selected_friend_profile ? (
+                <Image
+                  source={{ uri: selected_friend_profile }}
+                  style={{
+                    marginTop: 20,
+                    marginBottom: 10,
+                    width: 110,
+                    height: 110,
+                    borderRadius: 110,
+                    backgroundColor: "#ccc",
+                    resizeMode: "contain",
+                  }}
+                />
+              ) : (
+                <Image
+                  source={profileImage}
+                  style={{
+                    marginTop: 20,
+                    marginBottom: 10,
+                    width: 110,
+                    height: 110,
+                    resizeMode: "contain",
+                  }}
+                />
+              )}
+              <Text
+                style={{
+                  color: "#000000",
+                  fontSize: 16,
+                  fontFamily: "Rubik-Medium",
+                }}
+              >
+                {selected_friend_name}
+              </Text>
+              <View
+                style={{
+                  width: "87%",
+                  justifyContent: "space-between",
+                  flexDirection: "row",
+                  marginVertical: 10,
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#000000",
+                    fontSize: 14,
+                    fontFamily: "Rubik-Medium",
+                  }}
+                >
+                  Request For :
+                </Text>
+                <Text
+                  style={{
+                    color: "#000000",
+                    fontSize: 14,
+                    fontFamily: "Rubik-Medium",
+                  }}
+                >
+                  {selected_challenge_name}
+                </Text>
+              </View>
+
+              {selected_challenge_status == "requested" ? (
+                <View style={{ width: "100%", alignItems: "center" }}>
+                  {selected_noti_type ==
+                  "user to group admin for challenge joining" ? (
+                    <TouchableOpacity
+                      style={styles.btnBottomSheet}
+                      onPress={() => {
+                        handle_Join_Challenge_Request(selected_noti_id);
+                      }}
+                    >
+                      <Text style={styles.btnText}>Join Challenge</Text>
+                    </TouchableOpacity>
+                  ) : selected_noti_type == "group admin to challenge owner" ? (
+                    <TouchableOpacity
+                      style={styles.btnBottomSheet}
+                      onPress={() => {
+                        handleApprove_GroupChallenge_Request(selected_noti_id);
+                      }}
+                    >
+                      <Text style={styles.btnText}>
+                        Approve Group Challenge Request
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.btnBottomSheet}
+                      onPress={() => {
+                        handleApprove_ChallengeRequest(selected_noti_id);
+                      }}
+                    >
+                      <Text style={styles.btnText}>Approve Request</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={{
+                      ...styles.btnBottomSheet,
+                      backgroundColor: "transparent",
+                      borderWidth: 1,
+                    }}
+                    onPress={() => {
+                      selected_noti_type ==
+                      "user to group admin for challenge joining"
+                        ? handle_Ignore_Join_Challenge_Request(selected_noti_id)
+                        : selected_noti_type == "group admin to challenge owner"
+                        ? handleReject_GroupChallenge_Request(selected_noti_id)
+                        : handleIgnore_ChallengeRequest(selected_noti_id);
+                    }}
+                  >
+                    <Text style={{ ...styles.btnText, color: "#38ACFF" }}>
+                      Ignore Request
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View
+                  style={{
+                    flex: 1,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: 100,
+                  }}
+                >
+                  <Text
+                    style={{
+                      ...styles.btnText,
+                      fontSize: 15,
+                      fontFamily: "Rubik-Medium",
+                      color: "#38ACFF",
+                    }}
+                  >
+                    {selected_noti_type == "challenge admin to user"
+                      ? selected_challenge_status == "membered"
+                        ? "Added"
+                        : selected_challenge_status == "rejected"
+                        ? "Request Rejected"
+                        : "Request Accepted"
+                      : selected_challenge_status == "rejected"
+                      ? "Request Rejected"
+                      : "Request Accepted"}
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={{ ...styles.btnBottomSheet, backgroundColor: "#003e6b" }}
+                onPress={() => {
+                  challengeRequest_RBSheetRef?.current?.close();
+                  navigation?.navigate("ChallengesDetail", {
+                    item: {
+                      id: selected_challenge_id,
+                      type: "notification",
+                    },
+                  });
+                }}
+              >
+                <Text style={styles.btnText}>View Challenge Detail</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </ScrollView>
         </RBSheet>
       </ScrollView>
     </View>

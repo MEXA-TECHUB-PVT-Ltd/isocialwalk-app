@@ -415,11 +415,10 @@ const GroupDetail = ({ navigation, route }) => {
           setActiveChallegesList(list);
         } else {
           setActiveChallegesList([]);
-          console.log("else  :::: ");
-          Snackbar.show({
-            text: result?.message ? result?.message : result?.Message,
-            duration: Snackbar.LENGTH_SHORT,
-          });
+          // Snackbar.show({
+          //   text: result?.message ? result?.message : result?.Message,
+          //   duration: Snackbar.LENGTH_SHORT,
+          // });
         }
       })
       .catch((error) => {
@@ -607,7 +606,17 @@ const GroupDetail = ({ navigation, route }) => {
             const newData = addMembersList.filter(
               (item) => item?.selected === true
             );
-            setGroupMembersList(groupMembersList.concat(newData));
+            let newData11 = newData?.map((item) => {
+              return {
+                ...item,
+                selected: false,
+              };
+            });
+            if (newData11) {
+              setGroupMembersList(groupMembersList.concat(newData11));
+            } else {
+              setGroupMembersList(groupMembersList.concat(newData));
+            }
             //TODO: also remove selected memebers from addedmembers list
             const newData1 = addMembersList.filter(
               (item) => item.selected !== true
@@ -1105,6 +1114,7 @@ const GroupDetail = ({ navigation, route }) => {
             <View style={{ height: 120 }}></View>
           ) : (
             <FlatList
+              keyboardShouldPersistTaps="handled"
               data={activeChallegesList}
               numColumns={3}
               showsVerticalScrollIndicator={false}
@@ -1213,6 +1223,7 @@ const GroupDetail = ({ navigation, route }) => {
               }}
             >
               <FlatList
+                keyboardShouldPersistTaps="handled"
                 data={groupMembersList}
                 numColumns={3}
                 showsVerticalScrollIndicator={false}
@@ -1307,6 +1318,7 @@ const GroupDetail = ({ navigation, route }) => {
               }}
             >
               <FlatList
+                keyboardShouldPersistTaps="handled"
                 data={groupMembersList}
                 numColumns={3}
                 showsVerticalScrollIndicator={false}
@@ -1424,10 +1436,27 @@ const GroupDetail = ({ navigation, route }) => {
               }}
             >
               <FlatList
+                keyboardShouldPersistTaps="handled"
                 data={addMembersList}
                 numColumns={3}
                 showsVerticalScrollIndicator={false}
                 keyExtractor={(item, index) => index.toString()}
+                ListEmptyComponent={() => {
+                  return (
+                    <View
+                      style={{
+                        flex: 1,
+                        height: 300,
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ fontSize: 16, color: "#000" }}>
+                        No Record Found
+                      </Text>
+                    </View>
+                  );
+                }}
                 renderItem={(item) => {
                   return (
                     <TouchableOpacity

@@ -504,24 +504,27 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
               let friend_id = element.user_id;
               if (friend_id) {
                 let user_info = await getUser_Info(friend_id);
+                let friend_status = await getRequestStatus(friend_id);
 
-                let obj = {
-                  //  daily_step_record_id: element["Daily Steps Records id"],
-                  friend_user_id: friend_id,
-                  friend_user_name: user_info?.first_name,
-                  date: element?.date,
-                  calories_burnt: element?.calories_burnt,
-                  avg_pace: element?.avg_pace,
-                  avg_speed: element?.avg_speed,
-                  steps: element?.steps,
-                  distance_covered: element?.distancecovered,
-                  time_taken: element?.time_taken,
-                  user_info: user_info,
-                  image: user_info?.["profile image"]
-                    ? BASE_URL_Image + "/" + user_info?.["profile image"]
-                    : "",
-                };
-                list.push(obj);
+                if (friend_status != "requested") {
+                  let obj = {
+                    //  daily_step_record_id: element["Daily Steps Records id"],
+                    friend_user_id: friend_id,
+                    friend_user_name: user_info?.first_name,
+                    date: element?.date,
+                    calories_burnt: element?.calories_burnt,
+                    avg_pace: element?.avg_pace,
+                    avg_speed: element?.avg_speed,
+                    steps: element?.steps,
+                    distance_covered: element?.distancecovered,
+                    time_taken: element?.time_taken,
+                    user_info: user_info,
+                    image: user_info?.["profile image"]
+                      ? BASE_URL_Image + "/" + user_info?.["profile image"]
+                      : "",
+                  };
+                  list.push(obj);
+                }
               }
 
               // if (element?.error == false || element?.error == "false") {
@@ -560,7 +563,15 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
                   percentage: percentage.toFixed(2),
                 };
               });
-              setTodayRankingList(newData);
+
+              let chkOnlyIsRecord = newData.filter(
+                (item) => item?.friend_user_id != user_id
+              );
+              if (chkOnlyIsRecord?.length == 0) {
+                setTodayRankingList([]);
+              } else {
+                setTodayRankingList(newData);
+              }
             } else {
               setTodayRankingList([]);
             }
@@ -603,17 +614,20 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
               let friend_id = element?.user_id;
               if (friend_id) {
                 let user_info = await getUser_Info(friend_id);
-                let obj = {
-                  id: element?.id,
-                  friend_user_id: friend_id,
-                  steps: element?.steps,
-                  user_info: user_info,
-                  image: user_info?.["profile image"]
-                    ? BASE_URL_Image + "/" + user_info?.["profile image"]
-                    : "",
-                };
-                console.log("obj :::::  ", obj);
-                list.push(obj);
+                let friend_status = await getRequestStatus(friend_id);
+
+                if (friend_status != "requested") {
+                  let obj = {
+                    id: element?.id,
+                    friend_user_id: friend_id,
+                    steps: element?.steps,
+                    user_info: user_info,
+                    image: user_info?.["profile image"]
+                      ? BASE_URL_Image + "/" + user_info?.["profile image"]
+                      : "",
+                  };
+                  list.push(obj);
+                }
               }
               // let friend_id = element["user id"];
               // if (friend_id === null) {
@@ -648,7 +662,14 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
                   percentage: percentage.toFixed(2),
                 };
               });
-              setWeekRankingList(newData);
+              let chkOnlyIsRecord = newData.filter(
+                (item) => item?.friend_user_id != user_id
+              );
+              if (chkOnlyIsRecord?.length == 0) {
+                setWeekRankingList([]);
+              } else {
+                setWeekRankingList(newData);
+              }
             } else {
               setWeekRankingList([]);
             }
@@ -947,6 +968,39 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
         </TouchableOpacity>
       </View>
     );
+  };
+
+  const getRequestStatus = async (friendId) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        if (!friendId) {
+          resolve(false);
+          return;
+        } else {
+          let user_id = await AsyncStorage.getItem("user_id");
+          var requestOptions = {
+            method: "POST",
+            body: JSON.stringify({
+              this_user_id: user_id,
+              friend_user_id: friendId,
+            }),
+            redirect: "follow",
+          };
+          fetch(api.get_friend_status, requestOptions)
+            .then((response) => response.json())
+            .then((result) => {
+              let response = result[0]?.status ? result[0]?.status : false;
+              resolve(response);
+            })
+            .catch((error) => {
+              console.log("error  ::: ", error);
+              resolve(false);
+            });
+        }
+      } catch (error) {
+        resolve(false);
+      }
+    });
   };
 
   const handlePullRefresh = () => {
@@ -1323,6 +1377,7 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
                   ) : (
                     <View>
                       <FlatList
+                        keyboardShouldPersistTaps="handled"
                         data={todayRankingList}
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -1330,7 +1385,15 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
                         renderItem={(item) => {
                           let itemColor = generateColor();
                           return (
-                            <View
+                            <TouchableOpacity
+                              activeOpacity={0.7}
+                              onPress={() => {
+                                navigation.navigate("FriendProfile", {
+                                  user: {
+                                    id: item?.item?.friend_user_id,
+                                  },
+                                });
+                              }}
                               style={{
                                 ...styles.cardView,
                                 justifyContent: "center",
@@ -1428,7 +1491,7 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
                                 {item.item.flag}
                               </Text>
                             </View> */}
-                            </View>
+                            </TouchableOpacity>
                           );
                         }}
                       />
@@ -1764,6 +1827,7 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
                   ) : (
                     <View>
                       <FlatList
+                        keyboardShouldPersistTaps="handled"
                         data={weekRankingList}
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -1771,7 +1835,15 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
                         renderItem={(item) => {
                           let itemColor = generateColor();
                           return (
-                            <View
+                            <TouchableOpacity
+                              activeOpacity={0.7}
+                              onPress={() => {
+                                navigation.navigate("FriendProfile", {
+                                  user: {
+                                    id: item?.item?.friend_user_id,
+                                  },
+                                });
+                              }}
                               style={{
                                 ...styles.cardView,
                                 justifyContent: "center",
@@ -1869,7 +1941,7 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
                                 {item.item.flag}
                               </Text>
                             </View> */}
-                            </View>
+                            </TouchableOpacity>
                           );
                         }}
                       />
@@ -1960,6 +2032,7 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
                       }}
                     >
                       <FlatList
+                        keyboardShouldPersistTaps="handled"
                         data={todayRankingList}
                         numColumns={3}
                         showsVerticalScrollIndicator={false}
@@ -1970,7 +2043,12 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
                             <TouchableOpacity
                               onPress={() => {
                                 // navigation.navigate("FriendProfile");
-                                // bottomSheetRef?.current?.close();
+                                bottomSheetRef?.current?.close();
+                                navigation.navigate("FriendProfile", {
+                                  user: {
+                                    id: item?.item?.friend_user_id,
+                                  },
+                                });
                               }}
                               style={{
                                 ...styles.cardView,
@@ -2069,10 +2147,30 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
                 <View style={{ padding: 10, marginTop: 10, flex: 1 }}>
                   {weekRankingList.length == 0 ? (
                     <View style={styles.bootSheetCardView}>
-                      <Image
-                        source={require("../../assets/images/friend-profile.png")}
-                        style={{ marginVertical: 8, width: 44, height: 44 }}
-                      />
+                      <>
+                        {myImage ? (
+                          <Image
+                            // source={item.item.avater}
+                            source={{ uri: myImage }}
+                            style={{
+                              marginVertical: 8,
+                              width: 44,
+                              height: 44,
+                              borderRadius: 44,
+                              backgroundColor: "#ccc",
+                            }}
+                          />
+                        ) : (
+                          <Image
+                            source={require("../../assets/images/friend-profile.png")}
+                            style={{
+                              marginVertical: 8,
+                              width: 44,
+                              height: 44,
+                            }}
+                          />
+                        )}
+                      </>
                       <Text
                         style={{
                           color: "#040103",
@@ -2100,6 +2198,7 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
                       }}
                     >
                       <FlatList
+                        keyboardShouldPersistTaps="handled"
                         data={weekRankingList}
                         numColumns={3}
                         showsVerticalScrollIndicator={false}
@@ -2110,7 +2209,12 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
                             <TouchableOpacity
                               onPress={() => {
                                 // navigation.navigate("FriendProfile");
-                                // bottomSheetRef?.current?.close();
+                                bottomSheetRef?.current?.close();
+                                navigation.navigate("FriendProfile", {
+                                  user: {
+                                    id: item?.item?.friend_user_id,
+                                  },
+                                });
                               }}
                               style={{
                                 ...styles.cardView,

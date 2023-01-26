@@ -877,6 +877,7 @@ const Chat = ({
           }}
         >
           <FlatList
+            keyboardShouldPersistTaps="handled"
             data={friendsList}
             numColumns={3}
             showsVerticalScrollIndicator={false}
@@ -1487,23 +1488,37 @@ const Chat = ({
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       handleSearch(searchText);
-      setLoading(true);
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchText]);
 
   const handleSearch = (searchText) => {
-    if (searchText) {
-      const filter = chatList?.filter((item) =>
-        item?.name?.toLowerCase()?.includes(searchText?.toLowerCase())
-      );
-      setSearchResults(filter);
-      setLoading(false);
+    try {
+      if (searchText) {
+        setLoading(true);
+        const filter = chatList?.filter((item) =>
+          item?.name?.toLowerCase()?.includes(searchText?.toLowerCase())
+        );
+        if (filter?.length == 0) {
+          Snackbar.show({
+            text: "No Record Found",
+            duration: Snackbar.LENGTH_SHORT,
+          });
+          setSearchResults([]);
+        } else {
+          setSearchResults(filter);
+        }
+        setLoading(false);
+        setIsRefreshing(false);
+      } else {
+        setIsRefreshing(false);
+        setLoading(false);
+      }
+    } catch (error) {
       setIsRefreshing(false);
-    } else {
-      setIsRefreshing(false);
       setLoading(false);
+      console.log("error  ::: ", error);
     }
   };
 
@@ -1720,7 +1735,6 @@ const Chat = ({
     setIsRefreshing(!isRefreshing);
     if (searchText?.length) {
       //refreshing  search list
-      console.log("searchText .....", searchText);
       handleSearch(searchText);
     } else {
       getSuggestedFriendsList();
@@ -2098,6 +2112,7 @@ const Chat = ({
                 >
                   {isSuggestedVisible && (
                     <FlatList
+                      keyboardShouldPersistTaps="handled"
                       data={suggestedFriends}
                       keyExtractor={(item, index) => index.toString()}
                       horizontal
