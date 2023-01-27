@@ -575,38 +575,42 @@ const JoinGroup = ({ navigation, route }) => {
               {/* Incorruptibles */}
               {groupName}
             </Text>
-
-            {route?.params?.item?.status == true ||
-            route?.params?.item?.status == "requested" ? (
-              <TouchableOpacity
-                style={{ ...styles.btn, backgroundColor: "#ccc" }}
-              >
-                <Text
-                  style={{
-                    color: "#FFF",
-                    fontSize: 16,
-                    fontFamily: "Rubik-Regular",
-                  }}
-                >
-                  Requested
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.btn}
-                onPress={() => handleJoinGroup()}
-              >
-                <Text
-                  style={{
-                    color: "#FFF",
-                    fontSize: 16,
-                    fontFamily: "Rubik-Regular",
-                  }}
-                >
-                  Join Group
-                </Text>
-              </TouchableOpacity>
-            )}
+            {
+              <>
+                {route?.params?.item?.type == "notification" ? null : route
+                    ?.params?.item?.status == true ||
+                  route?.params?.item?.status == "requested" ? (
+                  <TouchableOpacity
+                    style={{ ...styles.btn, backgroundColor: "#ccc" }}
+                  >
+                    <Text
+                      style={{
+                        color: "#FFF",
+                        fontSize: 16,
+                        fontFamily: "Rubik-Regular",
+                      }}
+                    >
+                      Requested
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.btn}
+                    onPress={() => handleJoinGroup()}
+                  >
+                    <Text
+                      style={{
+                        color: "#FFF",
+                        fontSize: 16,
+                        fontFamily: "Rubik-Regular",
+                      }}
+                    >
+                      Join Group
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            }
           </View>
         )}
 
@@ -625,6 +629,7 @@ const JoinGroup = ({ navigation, route }) => {
             <View style={{ height: 120 }}></View>
           ) : (
             <FlatList
+              keyboardShouldPersistTaps="handled"
               data={activeChallegesList}
               numColumns={3}
               showsVerticalScrollIndicator={false}
@@ -706,6 +711,7 @@ const JoinGroup = ({ navigation, route }) => {
             }}
           >
             <FlatList
+              keyboardShouldPersistTaps="handled"
               data={groupMembersList}
               numColumns={3}
               showsVerticalScrollIndicator={false}

@@ -278,9 +278,7 @@ const ChallengesDetail = ({ navigation, route }) => {
   const getIndividualChallengeRanking = async (id, metric_no) => {
     //getting logged in user friend list
     const myFriendList = await getFriendsList();
-    console.log("myFriendList  ::::  ", myFriendList);
     setAddMembersList(myFriendList);
-
     let data = {
       challenge_id: id,
     };
@@ -348,8 +346,19 @@ const ChallengesDetail = ({ navigation, route }) => {
               notAddedParticipantsList.push(element);
             }
           }
+          let uniqueList = [];
+          for (const element of list) {
+            const found = uniqueList.some(
+              (el) => el?.user_info?.id === element?.user_info?.id
+            );
+            if (!found) {
+              uniqueList.push(element);
+            }
+          }
+
           setAddMembersList(notAddedParticipantsList);
-          setParticipantList(list);
+          // setParticipantList(list);
+          setParticipantList(uniqueList);
         }
       })
       .catch((error) => {
@@ -1626,6 +1635,7 @@ const ChallengesDetail = ({ navigation, route }) => {
                   }}
                 >
                   <FlatList
+                    keyboardShouldPersistTaps="handled"
                     data={challenge_GroupsList}
                     numColumns={3}
                     showsVerticalScrollIndicator={false}
@@ -1745,6 +1755,7 @@ const ChallengesDetail = ({ navigation, route }) => {
                     }}
                   >
                     <FlatList
+                      keyboardShouldPersistTaps="handled"
                       data={groupsList}
                       numColumns={3}
                       showsVerticalScrollIndicator={false}
@@ -1900,6 +1911,7 @@ const ChallengesDetail = ({ navigation, route }) => {
                     }}
                   >
                     <FlatList
+                      keyboardShouldPersistTaps="handled"
                       data={challenge_GroupsList}
                       numColumns={3}
                       showsVerticalScrollIndicator={false}
@@ -2060,6 +2072,7 @@ const ChallengesDetail = ({ navigation, route }) => {
                   }}
                 >
                   <FlatList
+                    keyboardShouldPersistTaps="handled"
                     data={participantList}
                     numColumns={3}
                     showsVerticalScrollIndicator={false}
@@ -2230,6 +2243,7 @@ const ChallengesDetail = ({ navigation, route }) => {
                     }}
                   >
                     <FlatList
+                      keyboardShouldPersistTaps="handled"
                       data={addMembersList}
                       numColumns={3}
                       showsVerticalScrollIndicator={false}
@@ -2272,9 +2286,9 @@ const ChallengesDetail = ({ navigation, route }) => {
                                 : "transparent",
                             }}
                           >
-                            {item?.item?.image != "" ? (
+                            {item?.item?.profile != "" ? (
                               <Image
-                                source={{ uri: item.item.image }}
+                                source={{ uri: item.item.profile }}
                                 style={{
                                   marginVertical: 8,
                                   width: 44,
@@ -2380,6 +2394,7 @@ const ChallengesDetail = ({ navigation, route }) => {
                     }}
                   >
                     <FlatList
+                      keyboardShouldPersistTaps="handled"
                       data={participantList}
                       numColumns={3}
                       showsVerticalScrollIndicator={false}

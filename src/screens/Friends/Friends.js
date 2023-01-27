@@ -800,6 +800,7 @@ const Friends = ({
                   }}
                 >
                   <FlatList
+                    keyboardShouldPersistTaps="handled"
                     numColumns={3}
                     key={"_"}
                     data={searchResults}
@@ -990,6 +991,7 @@ const Friends = ({
                 >
                   {isSuggestedVisible && (
                     <FlatList
+                      keyboardShouldPersistTaps="handled"
                       data={suggestedFriends}
                       keyExtractor={(item, index) => index.toString()}
                       horizontal
@@ -1132,6 +1134,7 @@ const Friends = ({
                         }}
                       >
                         <FlatList
+                          keyboardShouldPersistTaps="handled"
                           data={friendsList}
                           numColumns={3}
                           showsVerticalScrollIndicator={false}

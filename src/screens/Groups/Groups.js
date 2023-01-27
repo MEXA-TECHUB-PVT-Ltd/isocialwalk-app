@@ -510,10 +510,10 @@ const Groups = ({
           setGroupList(list1);
         } else {
           setGroupList([]);
-          Snackbar.show({
-            text: result?.Message,
-            duration: Snackbar.LENGTH_SHORT,
-          });
+          // Snackbar.show({
+          //   text: result?.Message,
+          //   duration: Snackbar.LENGTH_SHORT,
+          // });
         }
       })
       .catch((error) => {
@@ -591,10 +591,10 @@ const Groups = ({
           setJoinedGroupsList(listOfGroups);
         } else {
           setJoinedGroupsList([]);
-          Snackbar.show({
-            text: result?.Message,
-            duration: Snackbar.LENGTH_SHORT,
-          });
+          // Snackbar.show({
+          //   text: result?.Message,
+          //   duration: Snackbar.LENGTH_SHORT,
+          // });
         }
       })
       .catch((error) => {
@@ -696,8 +696,8 @@ const Groups = ({
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      handleSearch(searchText);
       setLoading(true);
+      handleSearch(searchText);
     }, 1500);
 
     return () => clearTimeout(delayDebounceFn);
@@ -731,11 +731,14 @@ const Groups = ({
     });
   };
 
-  const handleSearch = (searchText) => {
+  const handleSearch = async (searchText) => {
     if (searchText) {
+      let user_id = await AsyncStorage.getItem("user_id");
       let data = {
         name: searchText,
+        userid: user_id,
       };
+
       var requestOptions = {
         method: "POST",
         body: JSON.stringify(data),
@@ -744,11 +747,26 @@ const Groups = ({
       fetch(api.search_group, requestOptions)
         .then((response) => response.json())
         .then(async (result) => {
+          console.log("search result  ...........", result);
           let logged_in_user_id = await AsyncStorage.getItem("user_id");
-
-          if (result[0]?.error == false || result[0]?.error == "false") {
-            let groupsList = result[0]?.groups ? result[0]?.groups : [];
-            // setSearchResults(groupsList);
+          if (result == null) {
+            setSearchResults([]);
+            Snackbar.show({
+              text: "No Record Found",
+              duration: Snackbar.LENGTH_SHORT,
+            });
+          } else if (
+            result[0]?.message == "No Record found" ||
+            result == null
+          ) {
+            // let groupsList = result[0]?.groups ? result[0]?.groups : [];
+            setSearchResults([]);
+            Snackbar.show({
+              text: "No Record Found",
+              duration: Snackbar.LENGTH_SHORT,
+            });
+          } else {
+            let groupsList = result ? result : [];
             let list = [];
             if (groupsList?.length > 0) {
               for (const element of groupsList) {
@@ -756,13 +774,13 @@ const Groups = ({
                   logged_in_user_id,
                   element?.id
                 );
-                console.log("group_status  :::  ", group_status);
                 let obj = {
                   id: element?.id,
-                  created_by_user_id: element?.created_by_user_id,
-                  adminId: element?.created_by_user_id,
-                  image: element?.image
-                    ? BASE_URL_Image + "/" + element?.image
+                  // created_by_user_id: element?.created_by_user_id,
+                  created_by_user_id: element["Admin id"],
+                  adminId: element["Admin id"],
+                  image: element?.image_link
+                    ? BASE_URL_Image + "/" + element?.image_link
                     : "",
                   name: element?.name,
                   status: group_status,
@@ -770,29 +788,8 @@ const Groups = ({
                 };
                 list.push(obj);
               }
-              // groupsList.forEach((element) => {
-              //   if (logged_in_user_id != element?.created_by_user_id) {
-              //     let obj = {
-              //       id: element?.id,
-              //       created_by_user_id: element?.created_by_user_id,
-              //       adminId: element?.created_by_user_id,
-              //       image: element?.image
-              //         ? BASE_URL_Image + "/" + element?.image
-              //         : "",
-              //       name: element?.name,
-              //       status: false,
-              //     };
-              //     list.push(obj);
-              //   }
-              // });
             }
             setSearchResults(list);
-          } else {
-            setSearchResults([]);
-            Snackbar.show({
-              text: result[0]?.Message,
-              duration: Snackbar.LENGTH_SHORT,
-            });
           }
         })
         .catch((error) => console.log("error in searching  group ", error))
@@ -1020,6 +1017,7 @@ const Groups = ({
               {loading ? null : (
                 <View style={{ marginVertical: 15, paddingBottom: 10 }}>
                   <FlatList
+                    keyboardShouldPersistTaps="handled"
                     data={searchResults}
                     numColumns={3}
                     showsVerticalScrollIndicator={false}
@@ -1047,32 +1045,37 @@ const Groups = ({
                     }}
                     renderItem={(item) => {
                       return (
-                        <TouchableOpacity
-                          style={{ ...styles.cardView, width: "28.9%" }}
-                          onPress={() => handleSearchCardPress(item?.item)}
-                        >
-                          {item?.item?.image ? (
-                            <Image
-                              source={{ uri: item?.item?.image }}
-                              style={{
-                                marginVertical: 8,
-                                width: 44,
-                                height: 44,
-                                borderRadius: 44,
-                                backgroundColor: "#ccc",
-                              }}
-                            />
-                          ) : (
-                            <Image
-                              source={require("../../../assets/images/group-profile.png")}
-                              style={{ marginVertical: 8 }}
-                            />
-                          )}
+                        <View style={{ ...styles.cardView, width: "28.9%" }}>
+                          <TouchableOpacity
+                            style={{
+                              justifyContent: "center",
+                              alignItems: "center",
+                            }}
+                            onPress={() => handleSearchCardPress(item?.item)}
+                          >
+                            {item?.item?.image ? (
+                              <Image
+                                source={{ uri: item?.item?.image }}
+                                style={{
+                                  marginVertical: 8,
+                                  width: 44,
+                                  height: 44,
+                                  borderRadius: 44,
+                                  backgroundColor: "#ccc",
+                                }}
+                              />
+                            ) : (
+                              <Image
+                                source={require("../../../assets/images/group-profile.png")}
+                                style={{ marginVertical: 8 }}
+                              />
+                            )}
 
-                          <Text style={styles.cardText} numberOfLines={2}>
-                            {/* {item.item.group_name} */}
-                            {item?.item?.name}
-                          </Text>
+                            <Text style={styles.cardText} numberOfLines={2}>
+                              {/* {item.item.group_name} */}
+                              {item?.item?.name}
+                            </Text>
+                          </TouchableOpacity>
                           <View
                             style={{
                               justifyContent: "flex-end",
@@ -1112,13 +1115,13 @@ const Groups = ({
                               </TouchableOpacity>
                             ) : (
                               <TouchableOpacity
-                                onPress={() =>
+                                onPress={() => {
                                   handleonJoin(
                                     item.item.id,
                                     item?.item?.adminId,
                                     "search"
-                                  )
-                                }
+                                  );
+                                }}
                                 style={styles.cardButton}
                               >
                                 <Text
@@ -1129,7 +1132,7 @@ const Groups = ({
                               </TouchableOpacity>
                             )}
                           </View>
-                        </TouchableOpacity>
+                        </View>
                       );
                     }}
                   />
@@ -1191,41 +1194,46 @@ const Groups = ({
                 >
                   {isSuggestedVisible && (
                     <FlatList
+                      keyboardShouldPersistTaps="handled"
                       data={suggestedGroups}
                       keyExtractor={(item, index) => index.toString()}
                       horizontal
                       showsHorizontalScrollIndicator={false}
                       renderItem={(item) => {
                         return (
-                          <TouchableOpacity
-                            onPress={() =>
-                              navigation.navigate("JoinGroup", {
-                                item: item?.item,
-                              })
-                            }
-                            style={{ ...styles.cardView, width: 101 }}
-                          >
-                            {item?.item?.image ? (
-                              <Image
-                                source={{ uri: item?.item?.image }}
-                                style={{
-                                  marginVertical: 8,
-                                  width: 44,
-                                  height: 44,
-                                  borderRadius: 44,
-                                  backgroundColor: "#ccc",
-                                }}
-                              />
-                            ) : (
-                              <Image
-                                source={require("../../../assets/images/group-profile.png")}
-                                style={{ marginVertical: 8 }}
-                              />
-                            )}
-
-                            <Text style={styles.cardText} numberOfLines={2}>
-                              {item.item.group_name}
-                            </Text>
+                          <View style={{ ...styles.cardView, width: 101 }}>
+                            <TouchableOpacity
+                              style={{
+                                justifyContent: "center",
+                                alignItems: "center",
+                              }}
+                              onPress={() =>
+                                navigation.navigate("JoinGroup", {
+                                  item: item?.item,
+                                })
+                              }
+                            >
+                              {item?.item?.image ? (
+                                <Image
+                                  source={{ uri: item?.item?.image }}
+                                  style={{
+                                    marginVertical: 8,
+                                    width: 44,
+                                    height: 44,
+                                    borderRadius: 44,
+                                    backgroundColor: "#ccc",
+                                  }}
+                                />
+                              ) : (
+                                <Image
+                                  source={require("../../../assets/images/group-profile.png")}
+                                  style={{ marginVertical: 8 }}
+                                />
+                              )}
+                              <Text style={styles.cardText} numberOfLines={2}>
+                                {item.item.group_name}
+                              </Text>
+                            </TouchableOpacity>
                             <View
                               style={{
                                 justifyContent: "flex-end",
@@ -1251,7 +1259,6 @@ const Groups = ({
                               ) : (
                                 <TouchableOpacity
                                   onPress={() => {
-                                    // console.log("item  ::  ", item);
                                     handleonJoin(
                                       item.item.id,
                                       item?.item?.adminId
@@ -1267,7 +1274,7 @@ const Groups = ({
                                 </TouchableOpacity>
                               )}
                             </View>
-                          </TouchableOpacity>
+                          </View>
                         );
                       }}
                     />
@@ -1346,6 +1353,7 @@ const Groups = ({
                       }}
                     >
                       <FlatList
+                        keyboardShouldPersistTaps="handled"
                         data={groupList}
                         numColumns={3}
                         showsVerticalScrollIndicator={false}
@@ -1383,7 +1391,7 @@ const Groups = ({
                                 />
                               )}
 
-                              <Text style={styles.cardText}>
+                              <Text style={styles.cardText} numberOfLines={2}>
                                 {item.item.name}
                               </Text>
                             </TouchableOpacity>
@@ -1417,6 +1425,7 @@ const Groups = ({
                   }}
                 >
                   <FlatList
+                    keyboardShouldPersistTaps="handled"
                     data={joinedGroupsList}
                     numColumns={3}
                     showsVerticalScrollIndicator={false}

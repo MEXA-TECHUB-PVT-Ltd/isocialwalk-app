@@ -201,7 +201,8 @@ const Conversations = ({ navigation, route }) => {
     onValue(chatroomRef, async (snapshot) => {
       const data = snapshot.val();
       // setMessages(renderMessages(data.messages));
-      let messagesList = data ? renderMessages(data.messages) : [];
+      // let messagesList = data ? renderMessages(data.messages) : [];
+      let messagesList = data?.messages?.length > 0 ? data.messages : [];
       if (messagesList) {
         //handle mark all messages as read ---------------------
         let myArr = [];
@@ -219,7 +220,7 @@ const Conversations = ({ navigation, route }) => {
         );
         // console.log('unReadMessages :: ', unReadMessages);
         //mark all new messages as read
-
+        console.log("unReadMessages  .....", unReadMessages);
         const db = getDatabase();
         for (const element of unReadMessages) {
           update(
@@ -243,7 +244,8 @@ const Conversations = ({ navigation, route }) => {
             (item) => item?.deletedBy2 != userDetail?.id
           );
         }
-        setMessages(messagesList);
+        // setMessages(messagesList);
+        setMessages(messagesList.reverse());
       }
     });
     return () => {

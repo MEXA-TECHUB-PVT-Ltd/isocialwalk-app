@@ -406,6 +406,7 @@ const History = ({ scale, showMenu, setShowMenu, moveToRight }) => {
                 <EmptyHistoryView />
               ) : (
                 <FlatList
+                  keyboardShouldPersistTaps="handled"
                   data={historyList}
                   keyExtractor={(item, index) => index.toString()}
                   renderItem={(item) => {

@@ -1563,6 +1563,7 @@ const FriendProfile = ({ navigation, route }) => {
                 </View>
               ) : (
                 <FlatList
+                  keyboardShouldPersistTaps="handled"
                   key={"_"}
                   data={commonGroupsList}
                   numColumns={3}

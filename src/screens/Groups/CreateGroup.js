@@ -546,6 +546,7 @@ const CreateGroup = ({ navigation }) => {
               </View>
             ) : (
               <FlatList
+                keyboardShouldPersistTaps="handled"
                 data={membersList}
                 keyExtractor={(item, index) => index.toString()}
                 horizontal
