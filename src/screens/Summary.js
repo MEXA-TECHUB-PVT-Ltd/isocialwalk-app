@@ -62,8 +62,10 @@ const Summary = ({ navigation, route }) => {
   }, [route?.params]);
 
   const calculateStepsPerrcentage = async (today_steps) => {
-    let daily_goal_steps = await getUserDailyGoal();
+    // let daily_goal_steps = await getUserDailyGoal();
+    let user_goals = await getUserGoals();
 
+    daily_goal_steps = user_goals?.daily;
     today_steps = parseInt(today_steps);
     let daily_goal = parseInt(daily_goal_steps);
     let percentage = (today_steps / daily_goal) * 100;
@@ -74,8 +76,6 @@ const Summary = ({ navigation, route }) => {
     let week_days_list = await getWeekOfSpecificDate(selectedDate);
     let start_date = week_days_list[0].date;
     let end_date = week_days_list[week_days_list.length - 1].date;
-    console.log("start_date: ", start_date);
-    console.log("end_date: ", end_date);
 
     let user_id = await AsyncStorage.getItem("user_id");
     setLoading(true);
@@ -97,10 +97,8 @@ const Summary = ({ navigation, route }) => {
           let responseList = result[0]?.History ? result[0]?.History : [];
 
           // let week_days_list = await getWeekDays();
-          console.log("date :::::::::::::::::::::");
-          let date1 = new Date("2022-12-01");
 
-          console.log("week_days_list :::::::::::::::::::", week_days_list);
+          let date1 = new Date("2022-12-01");
 
           let list = [];
           week_days_list?.forEach((element) => {
@@ -194,6 +192,7 @@ const Summary = ({ navigation, route }) => {
         fetch(api.get_user_daily_goal, requestOptions)
           .then((response) => response.json())
           .then((result) => {
+            console.log("result ::::: ", result);
             if (result[0]?.error == false || result[0]?.error == "false") {
               let steps = result[0]["Daily Goal Steps"]
                 ? result[0]["Daily Goal Steps"]
@@ -209,6 +208,47 @@ const Summary = ({ navigation, route }) => {
           });
       } catch (error) {
         resolve(false);
+      }
+    });
+  };
+
+  const getUserGoals = async () => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        let user_id = await AsyncStorage.getItem("user_id");
+
+        let data = {
+          this_user_id: user_id,
+        };
+        var requestOptions = {
+          method: "POST",
+          body: JSON.stringify(data),
+          redirect: "follow",
+        };
+        fetch(api.get_user_goals, requestOptions)
+          .then((response) => response.json())
+          .then((result) => {
+            // setMyDailyGoal(result[0]["daily goals"]);
+            // setMyWeeklyGoals(result[0]["weekly goals"]);
+            let obj = {
+              daily: result[0]["daily goals"],
+              weekly: result[0]["weekly goals"],
+            };
+            resolve(obj);
+          })
+          .catch((error) => {
+            let obj = {
+              daily: "1200",
+              weekly: "1200",
+            };
+            resolve(obj);
+          });
+      } catch (error) {
+        let obj = {
+          daily: "1200",
+          weekly: "1200",
+        };
+        resolve(obj);
       }
     });
   };

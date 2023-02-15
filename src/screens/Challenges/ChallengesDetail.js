@@ -33,6 +33,8 @@ import {
 } from "react-native-responsive-dimensions";
 import ReportModal from "../../Reuseable Components/ReportModal";
 
+import RNFetchBlob from "rn-fetch-blob";
+
 const ChallengesDetail = ({ navigation, route }) => {
   const bottomSheetRef = useRef();
   const bottomSheetAddMemberRef = useRef();
@@ -918,6 +920,9 @@ const ChallengesDetail = ({ navigation, route }) => {
         skipBackup: true,
         path: "images",
       },
+      maxWidth: 500,
+      maxHeight: 500,
+      quality: 0.5,
     };
     await launchImageLibrary(options)
       .then((res) => {
@@ -934,44 +939,95 @@ const ChallengesDetail = ({ navigation, route }) => {
       .catch((error) => console.log(error));
   };
 
-  const handleUploadImage = (challangeId, image, fileName, fileType) => {
-    if (challangeId && image) {
-      setLoading(true);
-      let formData = new FormData();
-      formData.append("id", challangeId);
-      let obj = {
-        uri: image,
-        type: fileType,
-        name: fileName,
-      };
-
-      formData.append("image", obj);
-
-      // body.append('Content-Type', 'image/png');
-      var requestOptions = {
-        method: "POST",
-        body: formData,
-        redirect: "follow",
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Accept: "application/json",
-        },
-      };
-
-      fetch(api.upload_challenge_image, requestOptions)
-        .then((response) => response.json())
-        .then((result) => {
-          Snackbar.show({
-            text: result[0]?.message,
-            duration: Snackbar.LENGTH_SHORT,
-          });
-        })
-        .catch((error) =>
-          console.log("error in uploading group image :: ", error)
+  const handleUploadImage = (id, profileimage1, fileName1, fileType1) => {
+    if (id && profileimage1) {
+      if (profileimage1) {
+        console.log({ id, profileimage1, fileName1, fileType1 });
+        console.log(
+          " RNFetchBlob.wrap(profileimage1) :::::  ",
+          RNFetchBlob.wrap(profileimage1)
+        );
+        setLoading(true);
+        //______________________________________________________________________________
+        RNFetchBlob.fetch(
+          "POST",
+          api.upload_challenge_image,
+          {
+            otherHeader: "foo",
+            "Content-Type": "multipart/form-data",
+          },
+          [
+            { name: "id", data: id },
+            {
+              name: "image",
+              filename: fileName1,
+              type: fileType1,
+              data: RNFetchBlob.wrap(profileimage1),
+            },
+          ]
         )
-        .finally(() => setLoading(false));
+          .then((response) => {
+            console.log("response before : ", response?.data);
+
+            let myresponse = JSON.parse(response.data);
+            console.log("updaing profile response _____", myresponse);
+            Snackbar.show({
+              text: "Image uploaded successfully",
+              duration: Snackbar.LENGTH_SHORT,
+            });
+          })
+          .catch((error) => {
+            console.log("error in updating profile image ::: ", error);
+            Snackbar.show({
+              text: "Something went wrong.Profile Image not updated.Please Try Again",
+              duration: Snackbar.LENGTH_SHORT,
+            });
+          })
+          .finally(() => setLoading(false));
+      } else {
+        setLoading(false);
+        console.log("profile not updating .... .", profileimage1);
+      }
     }
   };
+  // const handleUploadImage = (challangeId, image, fileName, fileType) => {
+  //   if (challangeId && image) {
+  //     setLoading(true);
+  //     let formData = new FormData();
+  //     formData.append("id", challangeId);
+  //     let obj = {
+  //       uri: image,
+  //       type: fileType,
+  //       name: fileName,
+  //     };
+
+  //     formData.append("image", obj);
+
+  //     // body.append('Content-Type', 'image/png');
+  //     var requestOptions = {
+  //       method: "POST",
+  //       body: formData,
+  //       redirect: "follow",
+  //       headers: {
+  //         "Content-Type": "multipart/form-data",
+  //         Accept: "application/json",
+  //       },
+  //     };
+
+  //     fetch(api.upload_challenge_image, requestOptions)
+  //       .then((response) => response.json())
+  //       .then((result) => {
+  //         Snackbar.show({
+  //           text: result[0]?.message,
+  //           duration: Snackbar.LENGTH_SHORT,
+  //         });
+  //       })
+  //       .catch((error) =>
+  //         console.log("error in uploading group image :: ", error)
+  //       )
+  //       .finally(() => setLoading(false));
+  //   }
+  // };
 
   //handle leave challenge
   const handleLeaveChallenge = async () => {

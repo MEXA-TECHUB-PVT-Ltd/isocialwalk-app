@@ -40,7 +40,6 @@ const Conversations = ({ navigation, route }) => {
   const [searchText, setSearchText] = useState("");
   const [userId, setUserId] = useState("-1");
   // const [userId, setUserId] = useState(route.params.user.id);
-  // console.log(route.params.user.id);
 
   //
   const [selectedUserType, setSelectedUserType] = useState("");
@@ -59,6 +58,8 @@ const Conversations = ({ navigation, route }) => {
   const [visible, setVisible] = useState(false);
   const [isFocus, setIsFocus] = useState(false);
   const [isSendPressed, setIsSendPressed] = useState(false);
+
+  const [senderId, setSenderId] = useState("");
 
   // useEffect(() => {
   //   if (chatRef) {
@@ -80,9 +81,7 @@ const Conversations = ({ navigation, route }) => {
   }, []);
 
   const getUserDetail = async () => {
-    console.log("selectedUser?.id : ", selectedUser?.id);
     let user_info = await getUser_Info(selectedUser?.id);
-    console.log("user_info : :;", user_info);
     if (user_info) {
       let img = user_info["profile image"]
         ? BASE_URL_Image + "/" + user_info["profile image"]
@@ -93,7 +92,6 @@ const Conversations = ({ navigation, route }) => {
 
   //getting user detail
   const getUser_Info = (id) => {
-    console.log("id pass to get user info  ::", id);
     return new Promise((resolve, reject) => {
       try {
         var requestOptions = {
@@ -145,29 +143,53 @@ const Conversations = ({ navigation, route }) => {
       const myChatroom = await fetchMessages();
       isFirstUser = myChatroom?.firstUserId == userDetail?.id ? true : false;
 
-      let messagesList =
-        myChatroom?.messages?.length > 0 ? myChatroom.messages : [];
+      // let messagesList =
+      //   myChatroom?.messages?.length > 0 ? myChatroom.messages : [];
+
+      let messagesList = [];
+      let messagesObject;
+      if (typeof myChatroom?.messages == "object") {
+        let array = [];
+        Object.keys(myChatroom?.messages).forEach((key) => {
+          array.push(myChatroom?.messages[key]);
+        });
+        messagesObject = myChatroom?.messages;
+        messagesList = array;
+      } else {
+        messagesList =
+          myChatroom?.messages?.length > 0 ? myChatroom.messages : [];
+      }
 
       if (messagesList.length > 0) {
-        // console.log('message list :: ', messagesList);
-
         //handle mark all messages as read ---------------------
         let myArr = [];
-        messagesList.forEach((element, index) => {
-          let obj = {
-            node: index,
-            data: element,
-          };
-          myArr.push(obj);
-        });
+        if (messagesObject) {
+          Object.keys(messagesObject).forEach((key) => {
+            let obj = {
+              node: key,
+              data: messagesObject[key],
+            };
+            myArr.push(obj);
+          });
+        } else {
+          messagesList.forEach((element, index) => {
+            let obj = {
+              node: index,
+              data: element,
+            };
+            myArr.push(obj);
+          });
+        }
+
         let unReadMessages = myArr?.filter(
           (item) =>
             item?.data?.user?._id == selectedUser?.id &&
             item?.data?.read == false
         );
-        // console.log('unReadMessages :: ', unReadMessages);
+
         //mark all new messages as read
         const db = getDatabase();
+
         for (const element of unReadMessages) {
           update(
             ref(
@@ -190,6 +212,7 @@ const Conversations = ({ navigation, route }) => {
             (item) => item?.deletedBy2 != userDetail?.id
           );
         }
+        console.log("messages set.....");
         setMessages(messagesList.reverse());
       }
     };
@@ -200,27 +223,51 @@ const Conversations = ({ navigation, route }) => {
     const chatroomRef = ref(database, `chatrooms/${selectedUser?.chatroomId}`);
     onValue(chatroomRef, async (snapshot) => {
       const data = snapshot.val();
-      // setMessages(renderMessages(data.messages));
-      // let messagesList = data ? renderMessages(data.messages) : [];
-      let messagesList = data?.messages?.length > 0 ? data.messages : [];
+
+      // let messagesList = data?.messages?.length > 0 ? data.messages : [];
+      let messagesList = [];
+      let messagesObject = null;
+
+      if (typeof data?.messages == "object") {
+        let array = [];
+        Object.keys(data?.messages).forEach((key) => {
+          array.push(data?.messages[key]);
+        });
+        messagesObject = data?.messages ? data?.messages : null;
+        messagesList = array;
+      } else {
+        messagesList = data?.messages?.length > 0 ? data.messages : [];
+      }
+
       if (messagesList) {
         //handle mark all messages as read ---------------------
         let myArr = [];
-        messagesList.forEach((element, index) => {
-          let obj = {
-            node: index,
-            data: element,
-          };
-          myArr.push(obj);
-        });
+
+        if (messagesObject) {
+          Object.keys(messagesObject).forEach((key) => {
+            let obj = {
+              node: key,
+              data: messagesObject[key],
+            };
+            myArr.push(obj);
+          });
+        } else {
+          messagesList.forEach((element, index) => {
+            let obj = {
+              node: index,
+              data: element,
+            };
+            myArr.push(obj);
+          });
+        }
+
         let unReadMessages = myArr?.filter(
           (item) =>
             item?.data?.user?._id == selectedUser?.id &&
             item?.data?.read == false
         );
-        // console.log('unReadMessages :: ', unReadMessages);
+
         //mark all new messages as read
-        console.log("unReadMessages  .....", unReadMessages);
         const db = getDatabase();
         for (const element of unReadMessages) {
           update(
@@ -245,7 +292,9 @@ const Conversations = ({ navigation, route }) => {
           );
         }
         // setMessages(messagesList);
-        setMessages(messagesList.reverse());
+        if (senderId != userDetail?.id) {
+          setMessages(messagesList.reverse());
+        }
       }
     });
     return () => {
@@ -297,9 +346,9 @@ const Conversations = ({ navigation, route }) => {
       //send the msg[0] to the other user
       const database = getDatabase();
       //fetch fresh messages from server
-      const currentChatroom = await fetchMessages();
+      // const currentChatroom = await fetchMessages();
 
-      const lastMessages = currentChatroom.messages || [];
+      // const lastMessages = currentChatroom?.messages || [];
 
       if (userDetail?.id) {
         let newMessage = msg[0];
@@ -319,13 +368,25 @@ const Conversations = ({ navigation, route }) => {
           },
         };
 
-        //TODO: also update messages list in firebase
-        update(ref(database, `chatrooms/${selectedUser.chatroomId}`), {
-          messages: [...lastMessages, obj_newMessage],
-        });
+        setSenderId(userDetail?.id);
+
+        // //TODO: also update messages list in firebase
+        // update(ref(database, `chatrooms/${selectedUser.chatroomId}`), {
+        //   messages: [...lastMessages, obj_newMessage],
+        // });
 
         setMessages((previousMessages) =>
           GiftedChat.append(previousMessages, obj_newMessage)
+        );
+
+        let timestamp = new Date().getTime();
+        //TODO: also update messages list in firebase
+        update(
+          ref(
+            database,
+            `chatrooms/${selectedUser.chatroomId}/messages/${timestamp}/`
+          ),
+          obj_newMessage
         );
       }
     },
@@ -370,7 +431,6 @@ const Conversations = ({ navigation, route }) => {
   //--------------------------------------------------CHATTING USING FIREBASE---------------------------------------------
 
   // useEffect(() => {
-  //   // console.log(route.params.user.id);
   //   setMessages([
   //     {
   //       _id: 1,
@@ -405,17 +465,9 @@ const Conversations = ({ navigation, route }) => {
   }, []);
 
   const handleSendImageWithCaption = () => {
-    console.log("fileUri  ::::  ", fileUri);
     if (fileUri) {
       setIsSendPressed(true);
       setVisible(false);
-
-      console.log(
-        "fileName, fileUri, imageCaption :::: ",
-        fileName,
-        fileUri,
-        imageCaption
-      );
       handleImageUpload(fileName, fileUri, imageCaption);
       setIsSendPressed(false);
       setImageCaption("");

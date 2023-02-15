@@ -255,6 +255,7 @@ const DrawerTest = ({ navigation, route }) => {
         <View style={{ paddingBottom: 220 }}>
           <FlatList
             data={menuList}
+            keyboardShouldPersistTaps="handled"
             keyExtractor={(item, index) => index.toString()}
             renderItem={(item, index) => {
               return (
