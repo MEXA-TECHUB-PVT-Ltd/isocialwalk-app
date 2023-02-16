@@ -16,6 +16,17 @@ import {
 import RBSheet from "react-native-raw-bottom-sheet";
 import Header from "../../Reuseable Components/Header";
 
+import {
+  getDatabase,
+  get,
+  ref,
+  set,
+  onValue,
+  push,
+  update,
+  off,
+} from "firebase/database";
+
 import { api } from "../../constants/api";
 import Loader from "../../Reuseable Components/Loader";
 import Snackbar from "react-native-snackbar";
@@ -446,6 +457,7 @@ const Notification = ({ navigation }) => {
           text: "Request approved Successfully",
           duration: Snackbar.LENGTH_SHORT,
         });
+        addMemberToGroup(group_id); //also adding this member to firebase group members list
         // getAllNotification();
         // } else {
         //   Snackbar.show({
@@ -462,6 +474,68 @@ const Notification = ({ navigation }) => {
       })
       .finally(() => setLoading(false));
   };
+
+  // ___________________________________firebase code_______________________________________________
+  const addMemberToGroup = async (groupId) => {
+    let group = await findGroup(groupId);
+    if (group) {
+      let list = group?.members ? group?.members : [];
+      const filter = list?.filter(
+        (element) => element?.id == selected_friend_id
+      );
+      if (filter?.length > 0) {
+        console.log("member already exist in this group");
+
+        const list = group?.members || [];
+        const updatedData = list?.map((element) => {
+          if (element?.id == selected_friend_id) {
+            return {
+              ...element,
+              remove_by_admin: false,
+              leave_group: false,
+              deleted_at: new Date(),
+            };
+          } else {
+            return {
+              ...element,
+            };
+          }
+        });
+        if (updatedData) {
+          let membersObj = {
+            members: updatedData,
+          };
+          update(ref(database, `groups/${groupId}`), membersObj);
+        }
+      } else {
+        let newObj = {
+          members: [
+            ...list,
+            {
+              id: selected_friend_id,
+              name: selected_friend_name,
+              isPinned: false,
+              created_at: new Date(),
+              deleted_at: new Date(),
+              unread_count: 0,
+              remove_by_admin: false,
+              leave_group: false,
+            },
+          ],
+        };
+        const database = getDatabase();
+        update(ref(database, `groups/${groupId}`), newObj);
+      }
+    } else {
+      console.log("Oops! group not found");
+    }
+  };
+  const findGroup = async (id) => {
+    const database = getDatabase();
+    const mySnapshot = await get(ref(database, `groups/${id}`));
+    return mySnapshot.val();
+  };
+  // ___________________________________firebase code_______________________________________________
 
   //handle unapprove group request
 

@@ -49,8 +49,11 @@ const GroupConversations = ({ navigation, route }) => {
   const [isSearch, setIsSearch] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [userId, setUserId] = useState("-1");
+
+  const [isLeaveGroup, setIsLeaveGroup] = useState(false); // true when user leave this group
+  const [isAdminRemove, setIsAdminRemove] = useState(false); //true when group admin removed this member from group
+  const [isAdminDelete, setIsAdminDelete] = useState(false);
   // const [userId, setUserId] = useState(route.params.user.id);
-  // console.log(route.params.user.id);
 
   //
   const [selectedUserType, setSelectedUserType] = useState("");
@@ -73,6 +76,8 @@ const GroupConversations = ({ navigation, route }) => {
   const [fileName, setFileName] = useState("");
   const [fileUri, setFileUri] = useState("");
   const [imageCaption, setImageCaption] = useState("");
+
+  const [senderId, setSenderId] = useState("");
 
   // useEffect(() => {
   //   // if (chatRef) {
@@ -179,23 +184,21 @@ const GroupConversations = ({ navigation, route }) => {
     groupId,
     created_at
   ) => {
-    console.log("updateing unread message count....");
     return new Promise(async (resolve, reject) => {
       try {
         let user_id = await AsyncStorage.getItem("user_id");
         const database = getDatabase();
-        console.log("groupMemerbsList  :::: ", groupMemerbsList?.length);
         for (const element of groupMemerbsList) {
-          console.log("element :::: ", element);
-          console.log("__________________________", element?.id, user_id);
           if (element?.id != user_id) {
-            console.log("updatng.....");
             if (new Date(element?.deleted_at) < new Date(created_at)) {
               let member_index = groupMemerbsList.findIndex(
                 (item) => item?.id == element?.id
               );
-              console.log("member_index  ::: ", member_index);
-              if (member_index != -1) {
+              if (
+                member_index != -1 &&
+                element?.leave_group != true &&
+                element?.remove_by_admin != true
+              ) {
                 let unread_count = element?.unread_count + 1;
                 let newObj = {
                   ...element,
@@ -241,9 +244,9 @@ const GroupConversations = ({ navigation, route }) => {
     const loadData = async () => {
       const myChatroom = await fetchMessages();
 
-      //here selectedUser is user is basically selected group
+      //here selectedUser  is basically selected group
 
-      //getting logged in user detail from group memebers list
+      //getting logged in user detail from group members list
       const groupDetail = await findGroupInfo(selectedUser?.id);
       const groupMembers = groupDetail?.members ? groupDetail?.members : [];
 
@@ -253,12 +256,38 @@ const GroupConversations = ({ navigation, route }) => {
         (item) => item?.id == userDetail?.id
       );
 
+      setIsAdminDelete(
+        groupDetail?.deleted_by_admin ? groupDetail?.deleted_by_admin : false
+      );
+
+      setIsAdminRemove(
+        my_memberDetail[0]?.remove_by_admin
+          ? my_memberDetail[0]?.remove_by_admin
+          : false
+      );
+      setIsLeaveGroup(
+        my_memberDetail[0]?.leave_group
+          ? my_memberDetail[0]?.leave_group
+          : false
+      );
+
       //get my joining time --> when i joined this group
       const joined_at = my_memberDetail[0]?.created_at;
       const deleted_at = my_memberDetail[0]?.deleted_at;
 
-      let messagesList =
-        myChatroom?.messages?.length > 0 ? myChatroom.messages : [];
+      let messagesList = [];
+
+      if (typeof myChatroom?.messages == "object") {
+        let array = [];
+        Object.keys(myChatroom?.messages).forEach((key) => {
+          array.push(myChatroom?.messages[key]);
+        });
+        messagesList = array;
+      } else {
+        messagesList =
+          myChatroom?.messages?.length > 0 ? myChatroom.messages : [];
+      }
+
       if (messagesList.length > 0) {
         // if (joined_at) {
         //   // messagesList = messagesList?.filter(
@@ -275,9 +304,32 @@ const GroupConversations = ({ navigation, route }) => {
           );
         }
 
+        if (my_memberDetail[0]?.leave_group) {
+          messagesList = messagesList?.filter(
+            (item) =>
+              new Date(item?.createdAt) < new Date(my_memberDetail[0]?.leave_at)
+          );
+        }
+
+        if (my_memberDetail[0]?.remove_by_admin) {
+          messagesList = messagesList?.filter(
+            (item) =>
+              new Date(item?.createdAt) <
+              new Date(my_memberDetail[0]?.remove_at)
+          );
+        }
+
+        if (my_memberDetail[0]?.created_at) {
+          messagesList = messagesList?.filter(
+            (item) =>
+              new Date(item?.createdAt) >=
+              new Date(my_memberDetail[0]?.created_at)
+          );
+        }
+
         setMessages(messagesList.reverse());
       } else {
-        console.log("no messsage found", messagesList);
+        console.log("no message found");
       }
     };
     loadData();
@@ -290,7 +342,17 @@ const GroupConversations = ({ navigation, route }) => {
     );
     onValue(chatroomRef, async (snapshot) => {
       const data = snapshot.val();
-      let messagesList = data?.messages?.length > 0 ? data.messages : [];
+      let messagesList = [];
+
+      if (typeof data?.messages == "object") {
+        let array = [];
+        Object.keys(data?.messages).forEach((key) => {
+          array.push(data?.messages[key]);
+        });
+        messagesList = array;
+      } else {
+        messagesList = data?.messages?.length > 0 ? data.messages : [];
+      }
 
       // const myChatroom2 = await fetchMessages();
       // let messagesList =
@@ -305,10 +367,8 @@ const GroupConversations = ({ navigation, route }) => {
         const groupDetail = await findGroupInfo(selectedUser?.id);
         const groupMembers = groupDetail?.members ? groupDetail?.members : [];
         //update unread_messages count
-
         // updatedUnreadMessageCount(groupMembers, selectedUser?.id);
         markUnreadAsRead(groupMembers, selectedUser?.id);
-
         const my_memberDetail = groupMembers?.filter(
           (item) => item?.id == userDetail?.id
         ); //get my joining time --> when i joined this group
@@ -326,10 +386,27 @@ const GroupConversations = ({ navigation, route }) => {
           );
         }
 
-        // console.log("messagesList  :::   ", messagesList);
+        if (my_memberDetail[0]?.leave_group) {
+          messagesList = messagesList?.filter(
+            (item) =>
+              new Date(item?.createdAt) < new Date(my_memberDetail[0]?.leave_at)
+          );
+        }
 
-        // setMessages(messagesList);
-        setMessages(messagesList.reverse());
+        if (my_memberDetail[0]?.remove_by_admin) {
+          messagesList = messagesList?.filter(
+            (item) =>
+              new Date(item?.createdAt) <
+              new Date(my_memberDetail[0]?.remove_at)
+          );
+        }
+        let u_id = userDetail?.id;
+        if (senderId != userDetail?.id) {
+          console.log({ senderId, u_id });
+          setMessages(messagesList.reverse());
+        } else {
+          console.log("else ........", senderId, userDetail?.id);
+        }
       }
     });
     return () => {
@@ -385,7 +462,14 @@ const GroupConversations = ({ navigation, route }) => {
       //fetch fresh messages from server
       const currentChatroom = await fetchMessages();
 
-      const lastMessages = currentChatroom.messages || [];
+      let lastMessages = currentChatroom.messages || [];
+      if (typeof lastMessages == "object") {
+        let array = [];
+        Object.keys(lastMessages).forEach((key) => {
+          array.push(lastMessages[key]);
+        });
+        lastMessages = array;
+      }
 
       if (userDetail?.id) {
         //updated read count
@@ -419,22 +503,32 @@ const GroupConversations = ({ navigation, route }) => {
               : userDetail?.name,
           },
         };
-        //TODO: also update messages list in firebase
-        update(ref(database, `group_chatroom/${selectedUser?.chatroomId}`), {
-          messages: [...lastMessages, obj_newMessage],
-        });
 
-        // console.log("obj_newMessage ::: ", obj_newMessage);
+        setSenderId(userDetail?.id);
+
+        let timestamp = new Date().getTime();
+        //TODO: also update messages list in firebase
+        update(
+          ref(
+            database,
+            `group_chatroom/${selectedUser?.chatroomId}/messages/${timestamp}/`
+          ),
+          obj_newMessage
+        );
+        // //TODO: also update messages list in firebase
+        // update(ref(database, `group_chatroom/${selectedUser?.chatroomId}`), {
+        //   messages: [...lastMessages, obj_newMessage],
+        // });
+
         // let newList = [...lastMessages, obj_newMessage];
-        // console.log("newList  ::::   ", newList);
-        // setMessages(newList);
 
         setMessages((previousMessages) =>
           GiftedChat.append(previousMessages, obj_newMessage)
         );
+
         // setExtraData(new Date());
       } else {
-        console.log("user detil not found ::::::::");
+        console.log("user details not found ::::::::", userDetail?.id);
       }
     },
     [fetchMessages, myData?.username, selectedUser?.chatroomId]
@@ -442,7 +536,6 @@ const GroupConversations = ({ navigation, route }) => {
 
   const handleImageUpload = useCallback(async (fileName, filePath, caption) => {
     try {
-      console.log("uploading image......  ::::  ", fileName, filePath, caption);
       if (!fileName) return;
       setLoading(true);
       // let fileName = file?.path?.split('/').pop();
@@ -493,39 +586,8 @@ const GroupConversations = ({ navigation, route }) => {
 
   //--------------------------------------------------CHATTING USING FIREBASE---------------------------------------------
 
-  // useEffect(() => {
-  //   // console.log(route.params.user.id);
-  //   setMessages([
-  //     {
-  //       _id: 1,
-  //       text: 'Hello developer',
-  //       createdAt: new Date(),
-  //       user: {
-  //         _id: 2,
-  //         name: 'React Native',
-  //         avatar: 'https://placeimg.com/140/140/any',
-  //       },
-  //       image: null,
-  //     },
-  //     {
-  //       _id: 2,
-  //       text: 'Hello developer how was the day',
-  //       createdAt: new Date(),
-  //       user: {
-  //         _id: 3,
-  //         name: 'React Native',
-  //         avatar: 'https://placeimg.com/140/140/any',
-  //       },
-  //       image: null,
-  //     },
-  //   ]);
-  // }, []);
-
   const onSend = useCallback((messages = []) => {
     handleSend(messages);
-    // setMessages(previousMessages =>
-    //   GiftedChat.append(previousMessages, messages),
-    // );
   }, []);
 
   const SendComponent = (props) => {
@@ -558,42 +620,7 @@ const GroupConversations = ({ navigation, route }) => {
     );
   };
 
-  // const CustomBubble = props => {
-  //   return (
-  //     <Bubble
-  //       {...props}
-  //       textStyle={{
-  //         right: {
-  //           color: '#ffffff',
-  //         },
-  //         left: {
-  //           color: '#ffffff',
-  //         },
-  //       }}
-  //       wrapperStyle={{
-  //         left: {
-  //           backgroundColor: '#0496FF',
-  //         },
-  //         right: {
-  //           backgroundColor: '#003E6B',
-  //         },
-  //       }}
-  //     />
-  //   );
-  // };
-
   const CustomBubble = (props) => {
-    // if (props?.currentMessage?.text == 11) {
-    //   console.log("________________");
-    //   console.log(
-    //     " props?.currentMessage?.text ::",
-    //     props?.currentMessage?.text,
-    //     highLightSearchText != "" &&
-    //       props?.currentMessage?.text
-    //         ?.toLocaleLowerCase()
-    //         .includes(highLightSearchText?.toLocaleLowerCase())
-    //   );
-    // }
     return (
       <Bubble
         ref={_messageContainerRef}
@@ -635,10 +662,6 @@ const GroupConversations = ({ navigation, route }) => {
   };
 
   const CustomBubbleText = (props) => {
-    // console.log(
-    //   "props?.currentMessage?.user?.name  ",
-    //   props?.currentMessage.user
-    // );
     return (
       <View>
         <Text
@@ -735,29 +758,67 @@ const GroupConversations = ({ navigation, route }) => {
           bottom: 9,
         }}
       >
-        <View
-          style={{
-            backgroundColor: "red",
-            position: "absolute",
-            top: 52,
-            left: 18,
-            width: "100%",
-          }}
-        >
-          <InputToolbar
-            {...props}
-            containerStyle={{
-              //   backgroundColor: 'red',
-              height: 42,
-              borderColor: "#ccc",
-              borderTopColor: "#ccc",
-              borderTopWidth: 1,
-              borderWidth: 1,
-              borderRadius: 10,
-              width: "90%",
+        {isAdminDelete ? (
+          <Text
+            style={{
+              textAlign: "center",
+              color: "#000",
+              fontSize: 14,
+              paddingHorizontal: 5,
             }}
-          />
-        </View>
+          >
+            You can't send messages to this group because admin deleted this
+            group.
+          </Text>
+        ) : isAdminRemove ? (
+          <Text
+            style={{
+              textAlign: "center",
+              color: "#000",
+              fontSize: 14,
+              paddingHorizontal: 5,
+            }}
+          >
+            You can't send messages to this group because admin removed you from
+            this group.
+          </Text>
+        ) : isLeaveGroup ? (
+          <Text
+            style={{
+              textAlign: "center",
+              color: "#000",
+              fontSize: 14,
+              paddingHorizontal: 5,
+            }}
+          >
+            You can't send messages to this group because you are no longer a
+            participant
+          </Text>
+        ) : (
+          <View
+            style={{
+              backgroundColor: "red",
+              position: "absolute",
+              top: 52,
+              left: 18,
+              width: "100%",
+            }}
+          >
+            <InputToolbar
+              {...props}
+              containerStyle={{
+                //   backgroundColor: 'red',
+                height: 42,
+                borderColor: "#ccc",
+                borderTopColor: "#ccc",
+                borderTopWidth: 1,
+                borderWidth: 1,
+                borderRadius: 10,
+                width: "90%",
+              }}
+            />
+          </View>
+        )}
       </View>
     );
   };
@@ -943,8 +1004,6 @@ const GroupConversations = ({ navigation, route }) => {
                 fontFamily: "Rubik-Medium",
               }}
             >
-              {/* {route?.params?.user?.name} */}
-              {/* test */}
               {selectedUser?.name}
             </Text>
             {/* <Text
@@ -1004,7 +1063,6 @@ const GroupConversations = ({ navigation, route }) => {
           extraData={extraData}
           shouldUpdateMessage={(props, nextProps) => {
             props.extraData !== nextProps.extraData;
-            // console.log("nextProps.extraData", nextProps.extraData);
             // selectedMessages;
           }}
           // renderCustomView={(props) => {
@@ -1020,7 +1078,6 @@ const GroupConversations = ({ navigation, route }) => {
           // isCustomViewBottom={false}
           // renderMessageText={props => {
           //   let {currentMessage} = props;
-          //   console.log(currentMessage);
           //   return (
           //     <View
           //       style={{

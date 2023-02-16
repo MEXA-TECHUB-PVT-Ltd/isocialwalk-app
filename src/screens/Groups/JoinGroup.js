@@ -23,6 +23,17 @@ import firebaseNotificationApi from "../../constants/firebaseNotificationApi";
 import { BASE_URL_Image } from "../../constants/Base_URL_Image";
 
 import {
+  getDatabase,
+  get,
+  ref,
+  set,
+  onValue,
+  push,
+  update,
+  off,
+} from "firebase/database";
+
+import {
   responsiveHeight,
   responsiveWidth,
   responsiveFontSize,
@@ -37,6 +48,7 @@ const JoinGroup = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [groupId, setGroupId] = useState("");
   const [groupName, setGroupName] = useState("");
+  const [groupPrivacy, setGroupPrivacy] = useState("");
   const [adminId, setAdminId] = useState("");
   const [activeChallegesList, setActiveChallegesList] = useState([]);
   const [groupProfile, setGroupProfile] = useState("");
@@ -240,6 +252,7 @@ const JoinGroup = ({ navigation, route }) => {
           setGroupId(result[0]?.id);
           setGroupName(result[0]?.name);
           setAdminId(result[0]["Admin id"]);
+          setGroupPrivacy(result[0]?.group_privacy);
 
           let image_link = result[0]?.image_link
             ? BASE_URL_Image + "/" + result[0]?.image_link
@@ -263,6 +276,7 @@ const JoinGroup = ({ navigation, route }) => {
   const handleJoinGroup = async () => {
     if (groupId) {
       let user_id = await AsyncStorage.getItem("user_id");
+
       setLoading(true);
       let data = {
         user_id: user_id,
@@ -278,7 +292,9 @@ const JoinGroup = ({ navigation, route }) => {
       fetch(api.join_group, requestOptions)
         .then((response) => response.json())
         .then((result) => {
-          sendPushNotification(adminId);
+          // sendPushNotification(adminId);
+          addMemberToGroup(groupId, adminId);
+
           Snackbar.show({
             text: result[0]?.message,
             duration: Snackbar.LENGTH_SHORT,
@@ -294,6 +310,134 @@ const JoinGroup = ({ navigation, route }) => {
         .finally(() => setLoading(false));
     }
   };
+
+  //______________________________________firebase______________________________________________________
+  //adding this to to group in firebase for group chat
+  const addMemberToGroup = async (group_id, adminId) => {
+    let user_id = await AsyncStorage.getItem("user_id");
+    let user = await AsyncStorage.getItem("user");
+    let user_name = "";
+    if (user) {
+      user_name = JSON.parse(user)?.first_name;
+    }
+
+    // let group_info = await getGroup_Info(group_id);
+
+    if (groupPrivacy == "public") {
+      //handle add member
+      const database = getDatabase();
+      let group = await findGroup(group_id);
+      if (group) {
+        let filter = group?.members?.filter(
+          (element) => element?.id == user_id
+        );
+
+        if (filter?.length > 0) {
+          //user already added in this group
+        } else {
+          const groupMembers = group?.members || [];
+          let membersObj = {
+            members: [
+              ...groupMembers,
+              {
+                id: user_id,
+                name: user_name,
+                isPinned: false,
+                created_at: new Date(),
+                deleted_at: new Date(),
+                unread_count: 0,
+              },
+            ],
+          };
+          update(ref(database, `groups/${group_id}`), membersObj);
+        }
+      } else {
+        //create group
+        createGroupForChat(group_id, groupName, adminId);
+      }
+      let message = user_name + " joined your group";
+      sendPushNotification(adminId, message);
+    } else {
+      //do nothing --> member will added when group admin approved group join request
+      console.log(
+        "group is private --> member is only added when group admin approved group join request"
+      );
+      let message = user_name + " wants to join your group";
+      sendPushNotification(adminId, message);
+    }
+  };
+
+  const createGroupForChat = async (id, name, admin) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        //logged in user detail
+        let user_id = await AsyncStorage.getItem("user_id");
+        let user = await AsyncStorage.getItem("user");
+        let this_user_name = "";
+        if (user != null) {
+          this_user_name = JSON.parse(user)?.first_name;
+        }
+        const database = getDatabase();
+        // create chat room
+        const newChatroomRef = push(ref(database, "group_chatroom"), {
+          messages: [],
+          id: id,
+        });
+        const newChatroomId = newChatroomRef?.key;
+
+        //create new group
+        const newGroupObj = {
+          id: id ? id : "",
+          name: name ? name : "",
+          chatroomId: newChatroomId ? newChatroomId : "",
+          isPinned: false,
+          type: "group",
+          admin: admin,
+        };
+
+        set(ref(database, `groups/${id}`), newGroupObj);
+
+        //add members to group
+        let group_members = [];
+        //adding admin to this group members list
+        let obj = {
+          id: "admin",
+          name: "admin",
+          isPinned: false,
+          created_at: new Date(),
+          deleted_at: new Date(),
+          unread_count: 0,
+        };
+        group_members.push(obj);
+
+        //adding current user(group admin) to this group members list
+        obj = {
+          id: user_id,
+          name: this_user_name,
+          isPinned: false,
+          created_at: new Date(),
+          deleted_at: new Date(),
+          unread_count: 0,
+        };
+        group_members.push(obj);
+        let new_obj = {
+          members: group_members,
+        };
+        update(ref(database, `groups/${id}`), new_obj);
+        resolve(true);
+      } catch (error) {
+        console.log("error while creating new group", error);
+        resolve(false);
+      }
+    });
+  };
+
+  const findGroup = async (id) => {
+    const database = getDatabase();
+    const mySnapshot = await get(ref(database, `groups/${id}`));
+    return mySnapshot.val();
+  };
+  //______________________________________firebase______________________________________________________
 
   //getting specific challenge details
   const getChallengeInfo = (id) => {
@@ -404,8 +548,7 @@ const JoinGroup = ({ navigation, route }) => {
       });
   };
   //send push notification to user
-  const sendPushNotification = async (id) => {
-    console.log("id passed to sendPushNotification", id);
+  const sendPushNotification = async (id, message) => {
     let logged_in_user = await AsyncStorage.getItem("user");
     let fullName = "";
     if (logged_in_user != null) {
@@ -417,13 +560,12 @@ const JoinGroup = ({ navigation, route }) => {
     if (!user) {
       user = await firebaseNotificationApi.getFirebaseUser(id);
     }
-    console.log("user find____", user);
 
     if (user) {
       let token = user?.fcmToken;
-      console.log("token_____", token);
       let title = groupName;
-      let description = `${fullName} wants to join your Group...`;
+      let description = message;
+      // let description = `${fullName} wants to join your Group...`;
       let data = {
         id: id,
         // user_id: id,

@@ -22,6 +22,8 @@ import Loader from "../../Reuseable Components/Loader";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BASE_URL_Image } from "../../constants/Base_URL_Image";
 
+import RNFetchBlob from "rn-fetch-blob";
+
 const SCREEN_WIDTH = Dimensions.get("screen").width;
 const EditGroup = ({ navigation, route }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -123,10 +125,12 @@ const EditGroup = ({ navigation, route }) => {
         skipBackup: true,
         path: "images",
       },
+      maxWidth: 500,
+      maxHeight: 500,
+      quality: 0.5,
     };
     await launchImageLibrary(options)
       .then((res) => {
-        console.log("res :", res);
         if (res.didCancel) {
           console.log("User cancelled image picker");
         } else if (res.error) {
@@ -139,6 +143,13 @@ const EditGroup = ({ navigation, route }) => {
           setGroupImage_Name(res.assets[0].fileName);
           setGroupImage_Type(res.assets[0].type);
           setIsImageChange(true);
+          //  id,groupImage,groupImage_Type,groupImage_Name
+          handleUpdateGroupImage(
+            route?.params?.id,
+            res.assets[0].uri,
+            res.assets[0].type,
+            res.assets[0].fileName
+          );
         }
       })
       .catch((error) => console.log(error));
@@ -169,17 +180,18 @@ const EditGroup = ({ navigation, route }) => {
           if (result[0]?.error == false || result[0]?.error == "false") {
             //update group privacy
             handleUpdateGroupPrivacy();
-            if (isImageChange) {
-              handleUpdateGroupImage();
-            } else {
-              console.log("group image not changed .. ");
-            }
+            // if (isImageChange) {
+            //   console.log("updating group image...........");
+            //   handleUpdateGroupImage(groupId);
+            // } else {
+            //   console.log("group image not changed .. ");
+            // }
             Snackbar.show({
               text: "Group Updated Successfully!",
               duration: Snackbar.LENGTH_SHORT,
             });
             // navigation?.goBack();
-            navigation?.navigate("Groups");
+            // navigation?.navigate("Groups");
           } else {
             Snackbar.show({
               text: result?.message,
@@ -238,36 +250,123 @@ const EditGroup = ({ navigation, route }) => {
       });
   };
   //update group profile image
-  const handleUpdateGroupImage = () => {
-    let formData = new FormData();
-    formData.append("id", groupId);
-    let obj = {
-      uri: groupImage,
-      type: groupImage_Type,
-      name: groupImage_Name,
-    };
-    console.log("image obj ,", obj);
-    formData.append("image", obj);
-    console.log("formdata : ", formData);
+  // const handleUpdateGroupImage = (
+  //   groupImage1,
+  //   groupImage_Type1,
+  //   groupImage_Name1
+  // ) => {
+  //   setLoading(true);
+  //   RNFetchBlob.fetch(
+  //     "POST",
+  //     api.group_profileimage,
+  //     {
+  //       otherHeader: "foo",
+  //       "Content-Type": "multipart/form-data",
+  //     },
+  //     [
+  //       { name: "id", data: route?.params?.id },
+  //       {
+  //         name: "image",
+  //         filename: groupImage_Name1,
+  //         type: groupImage_Type1,
+  //         data: RNFetchBlob.wrap(groupImage1),
+  //       },
+  //     ]
+  //   )
+  //     .then((response) => {
+  //       console.log("response before : ", response);
 
-    var requestOptions = {
-      method: "POST",
-      body: formData,
-      redirect: "follow",
-      headers: {
+  //       // let myresponse = JSON.parse(response.data);
+  //       // console.log("updaing profile response _____", myresponse);
+  //       Snackbar.show({
+  //         text: "Image uploaded successfully",
+  //         duration: Snackbar.LENGTH_SHORT,
+  //       });
+  //     })
+  //     .catch((error) => {
+  //       console.log("error  :::::  ", error);
+  //       Snackbar.show({
+  //         text: "Something went wrong.Profile Image not updated.Please Try Again",
+  //         duration: Snackbar.LENGTH_SHORT,
+  //       });
+  //     })
+  //     .finally(() => setLoading(false));
+
+  //   // let formData = new FormData();
+  //   // formData.append("id", groupId);
+  //   // let obj = {
+  //   //   uri: groupImage,
+  //   //   type: groupImage_Type,
+  //   //   name: groupImage_Name,
+  //   // };
+  //   // console.log("image obj ,", obj);
+  //   // formData.append("image", obj);
+  //   // console.log("formdata : ", formData);
+
+  //   // var requestOptions = {
+  //   //   method: "POST",
+  //   //   body: formData,
+  //   //   redirect: "follow",
+  //   //   headers: {
+  //   //     "Content-Type": "multipart/form-data",
+  //   //     Accept: "application/json",
+  //   //   },
+  //   // };
+
+  //   // fetch(api.group_profileimage, requestOptions)
+  //   //   .then((response) => response.json())
+  //   //   .then((result) => {
+  //   //     console.log("image update response: ", result);
+  //   //   })
+  //   //   .catch((error) =>
+  //   //     console.log("error in uploading group image :: ", error)
+  //   //   );
+  // };
+
+  const handleUpdateGroupImage = (
+    id,
+    groupImage,
+    groupImage_Type,
+    groupImage_Name
+  ) => {
+    console.log(".... ", id, groupImage, groupImage_Type, groupImage_Name);
+    setLoading(true);
+    //______________________________________________________________________________
+    RNFetchBlob.fetch(
+      "POST",
+      api.group_profileimage,
+      {
+        otherHeader: "foo",
         "Content-Type": "multipart/form-data",
-        Accept: "application/json",
       },
-    };
+      [
+        { name: "id", data: id },
+        {
+          name: "image",
+          filename: groupImage_Name,
+          type: groupImage_Type,
+          data: RNFetchBlob.wrap(groupImage),
+        },
+      ]
+    )
+      .then((response) => {
+        console.log("response before : ", response?.data);
 
-    fetch(api.group_profileimage, requestOptions)
-      .then((response) => response.json())
-      .then((result) => {
-        console.log("image update response: ", result);
+        let myresponse = JSON.parse(response.data);
+        console.log("updaing profile response _____", myresponse);
+        Snackbar.show({
+          text: "Image uploaded successfully",
+          duration: Snackbar.LENGTH_SHORT,
+        });
       })
-      .catch((error) =>
-        console.log("error in uploading group image :: ", error)
-      );
+      .catch((error) => {
+        console.log("error in updating profile image ::: ", error);
+        Snackbar.show({
+          text: "Something went wrong.Profile Image not updated.Please Try Again",
+          duration: Snackbar.LENGTH_SHORT,
+        });
+      })
+      .finally(() => setLoading(false));
   };
 
   const handlePullRefresh = () => {

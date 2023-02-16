@@ -288,6 +288,9 @@ const CreateChallenges = ({ navigation, route }) => {
         skipBackup: true,
         path: "images",
       },
+      maxWidth: 500,
+      maxHeight: 500,
+      quality: 0.5,
     };
     await launchImageLibrary(options)
       .then((res) => {

@@ -290,17 +290,18 @@ const Chat = ({
       let myUserRef = null;
       let user_id = getUser_ID(); //logged in user id
       const database = getDatabase();
+
       myUserRef = ref(database, `users/${userId}`);
       const loadData = async () => {
-        const user_info_firebase = await findUser(userId);
+        //   const user_info_firebase = await findUser(userId);
         let data = await getChatingList(myUserRef);
         //filter user that if user deleted all messages then no need to show it in chat list
         // data = data?.filter(item=>item?.isDeleted==false)
 
         //TODO: short list base on pinned chat --> to show pinned chat on top of chat list
-        data.sort(function (a, b) {
-          return b.isPinned - a.isPinned;
-        });
+        // data.sort(function (a, b) {
+        //   return b.isPinned - a.isPinned;
+        // });
         // setChatList(data);
         //getting group chat list
         let groupsChat = await getGroupsList();
@@ -308,11 +309,14 @@ const Chat = ({
 
         //merge friend chat and group chat list
         let arr = [...data, ...groupsChat];
+
         // b.isPinned - a.isPinned &&
+        //TODO: sorting array by pinned status,last message created datetime and empty/undefined value
         arr.sort(function (a, b) {
           return (
             b.isPinned - a.isPinned ||
-            new Date(b.createdAt) - new Date(a.createdAt)
+            (b?.createdAt ? new Date(b.createdAt) : 1) -
+              (a?.createdAt ? new Date(a.createdAt) : 0)
           );
         });
 
@@ -327,7 +331,6 @@ const Chat = ({
 
       const groupChatroomRef = ref(database, `group_chatroom`);
       onValue(groupChatroomRef, async (snapshot) => {
-        console.log("new message aya ha...");
         loadData();
       });
 
@@ -388,6 +391,7 @@ const Chat = ({
               }
             }
           }
+
           dispatch(setLoginUserDetail(data));
           resolve(usersList);
         });
@@ -404,7 +408,17 @@ const Chat = ({
           const chatroomRef = ref(database, `chatrooms/${chatroomId}`);
           onValue(chatroomRef, (snapshot) => {
             const data = snapshot.val();
-            let messagesList = data?.messages ? data.messages : [];
+            // let messagesList = data?.messages ? data.messages : [];
+            let messagesList = [];
+            if (typeof data?.messages == "object") {
+              let array = [];
+              Object.keys(data?.messages).forEach((key) => {
+                array.push(data?.messages[key]);
+              });
+              messagesList = array;
+            } else {
+              messagesList = messagesList = data?.messages ? data.messages : [];
+            }
 
             let isFirstUser = data?.firstUserId == userId ? true : false;
 
@@ -672,9 +686,11 @@ const Chat = ({
             let lastMessage_info = await getGroup_LatestMessage(
               element?.data?.chatroomId,
               joined_at,
-              deleted_at
+              deleted_at,
+              my_memberDetail
             );
-            if (lastMessage_info) {
+            if (lastMessage_info != null) {
+              // if (lastMessage_info) {
               let group_info = await getGroup_Info(element?.id);
               let obj = {
                 // group: element,
@@ -702,6 +718,7 @@ const Chat = ({
                   : "",
               };
               myGroups.push(obj);
+              // }
             }
           }
         }
@@ -717,7 +734,12 @@ const Chat = ({
   };
 
   //getting group last message detail
-  const getGroup_LatestMessage = (chatroomId, joined_at, deleted_at) => {
+  const getGroup_LatestMessage = (
+    chatroomId,
+    joined_at,
+    deleted_at,
+    my_memberDetail
+  ) => {
     return new Promise((resolve, reject) => {
       try {
         if (chatroomId) {
@@ -726,6 +748,9 @@ const Chat = ({
           onValue(chatroomRef, (snapshot) => {
             const data = snapshot.val();
             let messagesList = data?.messages ? data.messages : [];
+            if (messagesList?.length == 0) {
+              resolve(false); //messages array is empty
+            }
             //only show messages after he joined this group
 
             // if (joined_at) {
@@ -734,27 +759,72 @@ const Chat = ({
             //   );
             // }
             if (deleted_at) {
-              messagesList = messagesList?.filter(
-                (item) => new Date(item?.createdAt) >= new Date(deleted_at)
-              );
-            }
-            if (messagesList?.length == 0) {
-              resolve(false);
-            } else {
-              const unreadMessages = messagesList?.filter(
-                (item) => item?.read == false && item?.user?._id != userId
-              );
-              let lastitem = messagesList?.pop();
+              if (typeof messagesList == "object") {
+                let array = [];
+                Object.keys(messagesList).forEach((key) => {
+                  array.push(messagesList[key]);
+                });
+                messagesList = array;
+              }
+              let allMessages = messagesList;
 
-              let lastMessage = lastitem?.text;
-              let obj = {
-                createdAt: lastitem?.createdAt,
-                message: lastitem?.text,
-                image: lastitem?.image,
-                read: lastitem?.read,
-                unReadCount: unreadMessages?.length,
-              };
-              resolve(obj);
+              // ________________________handle leave group________________________
+              if (my_memberDetail[0]?.leave_group) {
+                messagesList = messagesList?.filter(
+                  (item) =>
+                    new Date(item?.createdAt) <
+                    new Date(my_memberDetail[0]?.leave_at)
+                );
+              }
+              // ________________________handle leave group________________________
+
+              // ____________________member is removed by admin_________________
+              if (my_memberDetail[0]?.remove_by_admin) {
+                messagesList = messagesList?.filter(
+                  (item) =>
+                    new Date(item?.createdAt) <
+                    new Date(my_memberDetail[0]?.remove_at)
+                );
+              }
+              // ____________________member is removed by admin_________________
+
+              // ________________________handle delete previous___________________
+              if (deleted_at) {
+                messagesList = messagesList?.filter(
+                  (item) => new Date(item?.createdAt) >= new Date(deleted_at)
+                );
+
+                if (messagesList?.length == 0) {
+                  resolve(null); //user deleted all previous messages
+                }
+              }
+              // ________________________handle delete previous___________________
+
+              // if (allMessages?.length > 0 && messagesList?.length == 0) {
+              //   resolve(null); //it means user deleted previous messages.
+              // }
+            }
+            try {
+              if (messagesList?.length == 0) {
+                resolve(false);
+              } else {
+                const unreadMessages = messagesList?.filter(
+                  (item) => item?.read == false && item?.user?._id != userId
+                );
+                let lastitem = messagesList?.pop();
+                let lastMessage = lastitem?.text;
+                let obj = {
+                  createdAt: lastitem?.createdAt,
+                  message: lastitem?.text,
+                  image: lastitem?.image,
+                  read: lastitem?.read,
+                  unReadCount: unreadMessages?.length,
+                };
+                resolve(obj);
+              }
+            } catch (error) {
+              console.log("error   ::::", error);
+              resolve(false);
             }
           });
         } else {
@@ -769,7 +839,6 @@ const Chat = ({
   const getSuggestedFriendsList = async () => {
     try {
       let user_id = await AsyncStorage.getItem("user_id");
-
       let data = {
         this_user_id: user_id,
       };
@@ -1049,7 +1118,9 @@ const Chat = ({
   //delete friend chat
   const deleteItem = async (id, item) => {
     try {
-      setLoading(true);
+      console.log("here.......................", id, item);
+
+      //  setLoading(true);
       let user_id = await AsyncStorage.getItem("user_id");
 
       const myDetail = await findUser(user_id);
@@ -1061,19 +1132,39 @@ const Chat = ({
       let isFirstUser = myChatRoom?.firstUserId == user_id ? true : false;
       let newData = [];
       if (isFirstUser) {
-        newData = myChatRoom?.messages.map((element) => {
-          return {
-            ...element,
-            deletedBy1: user_id,
-          };
-        });
+        if (typeof myChatRoom?.messages == "object") {
+          Object.keys(myChatRoom?.messages).forEach((key) => {
+            let obj = {
+              ...myChatRoom?.messages[key],
+              deletedBy1: user_id,
+            };
+            newData.push(obj);
+          });
+        } else {
+          newData = myChatRoom?.messages.map((element) => {
+            return {
+              ...element,
+              deletedBy1: user_id,
+            };
+          });
+        }
       } else {
-        newData = myChatRoom?.messages.map((element) => {
-          return {
-            ...element,
-            deletedBy2: user_id,
-          };
-        });
+        if (typeof myChatRoom?.messages == "object") {
+          Object.keys(myChatRoom?.messages).forEach((key) => {
+            let obj = {
+              ...myChatRoom?.messages[key],
+              deletedBy2: user_id,
+            };
+            newData.push(obj);
+          });
+        } else {
+          newData = myChatRoom?.messages.map((element) => {
+            return {
+              ...element,
+              deletedBy2: user_id,
+            };
+          });
+        }
       }
       let obj = {};
       if (isFirstUser) {
@@ -1099,6 +1190,7 @@ const Chat = ({
       setLoading(false);
       setIsRefreshing(false);
     } catch (error) {
+      console.log("error catch  ::", error);
       setLoading(false);
       setIsRefreshing(false);
     }
@@ -1150,9 +1242,14 @@ const Chat = ({
         }
       });
       newData1.sort(function (a, b) {
+        // return (
+        //   b.isPinned - a.isPinned ||
+        //   new Date(b.createdAt) - new Date(a.createdAt)
+        // );
         return (
           b.isPinned - a.isPinned ||
-          new Date(b.createdAt) - new Date(a.createdAt)
+          (b?.createdAt ? new Date(b.createdAt) : 1) -
+            (a?.createdAt ? new Date(a.createdAt) : 0)
         );
       });
       setChatList(newData1);
@@ -1192,7 +1289,7 @@ const Chat = ({
       const database = getDatabase();
       update(ref(database, `groups/${groupId}`), newObj);
 
-      //also update chatlist state value to show pinned chat on top of list
+      //also update chat_list state value to show pinned chat on top of list
       const newData1 = chatList.map((item) => {
         if (groupId === item.id) {
           return {
@@ -1206,7 +1303,12 @@ const Chat = ({
         }
       });
       newData1.sort(function (a, b) {
-        return b.isPinned - a.isPinned;
+        // return b.isPinned - a.isPinned;
+        return (
+          b.isPinned - a.isPinned ||
+          (b?.createdAt ? new Date(b.createdAt) : 1) -
+            (a?.createdAt ? new Date(a.createdAt) : 0)
+        );
       });
       // setGroupsList(newData1);
       setChatList(newData1);
@@ -1243,6 +1345,7 @@ const Chat = ({
         const newData = chatList.filter((item) => item.id != groupId);
         setChatList(newData);
       } else {
+        console.log("member detail not found....", members);
         Snackbar.show({
           text: "Something went wrong.",
           duration: Snackbar.LENGTH_SHORT,

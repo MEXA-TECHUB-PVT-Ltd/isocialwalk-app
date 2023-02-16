@@ -655,6 +655,7 @@ const Home = ({ scale, showMenu, setShowMenu, moveToRight, setActiveTab }) => {
               });
 
               let largest_step = list[0]?.steps;
+
               let newData = list.map((item, index) => {
                 let percentage = (item?.steps / largest_step) * 100;
                 return {

@@ -19,9 +19,19 @@ import { api } from "../../constants/api";
 import Snackbar from "react-native-snackbar";
 import Loader from "../../Reuseable Components/Loader";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { image } from "d3";
+import { create, image } from "d3";
 import { id } from "date-fns/locale";
 import { BASE_URL_Image } from "../../constants/Base_URL_Image";
+import {
+  getDatabase,
+  get,
+  ref,
+  set,
+  onValue,
+  push,
+  update,
+  off,
+} from "firebase/database";
 
 const SCREEN_WIDTH = Dimensions.get("screen").width;
 const CreateGroup = ({ navigation }) => {
@@ -152,15 +162,7 @@ const CreateGroup = ({ navigation }) => {
 
     fetch(api.group_profileimage, requestOptions)
       .then((response) => response.json())
-      .then((result) => {
-        // console.log("update group image response ::  ::   ", result);
-        // if (result[0]?.error == false) {
-        // Snackbar.show({
-        //   text: result[0]?.message,
-        //   duration: Snackbar.LENGTH_SHORT,
-        // });
-        // }
-      })
+      .then((result) => {})
       .catch((error) =>
         console.log("error in uploading group image :: ", error)
       )
@@ -195,7 +197,7 @@ const CreateGroup = ({ navigation }) => {
 
       fetch(api.create_group, requestOptions)
         .then((response) => response.json())
-        .then((result) => {
+        .then(async (result) => {
           console.log("create group response ::   ", result);
           if (result?.error == false || result?.error == "false") {
             uploadGroupImage(result?.id);
@@ -208,6 +210,15 @@ const CreateGroup = ({ navigation }) => {
               // adminid, groupId, memberList
               handleAddMembertoGroup(user_id, result?.id, memberList);
             }
+
+            //function to create group to firebase for group chating and also adding selected members to this newly created group
+            let status = await createGroupForChat(
+              result?.id, //group id
+              groupName,
+              user_id, //admin of group
+              membersList //members list that is added in this group
+            );
+            console.log("status::::  ", status);
             Snackbar.show({
               text: "Group Created Successfully!",
               duration: Snackbar.LENGTH_SHORT,
@@ -258,7 +269,6 @@ const CreateGroup = ({ navigation }) => {
           let responseList = [];
           for (const element of list) {
             let user_info = await getUser_Info(element);
-            console.log("user info  :::: ", user_info);
             if (user_info == false) {
               console.log("user detail not found ....");
             } else {
@@ -321,6 +331,9 @@ const CreateGroup = ({ navigation }) => {
         skipBackup: true,
         path: "images",
       },
+      maxWidth: 500,
+      maxHeight: 500,
+      quality: 0.5,
     };
     await launchImageLibrary(options)
       .then((res) => {
@@ -340,6 +353,116 @@ const CreateGroup = ({ navigation }) => {
       })
       .catch((error) => console.log(error));
   };
+
+  // ________________________________________Group Chat Using Firebase ________________________________________
+
+  //TODO: create new group
+  const createGroupForChat = async (id, name, admin, membersList) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        //logged in user detail
+        let user = await AsyncStorage.getItem("user");
+        let this_user_name = "";
+        if (user != null) {
+          this_user_name = JSON.parse(user)?.first_name;
+        }
+
+        const database = getDatabase();
+
+        // create chat room
+        const newChatroomRef = push(ref(database, "group_chatroom"), {
+          messages: [],
+          id: id,
+        });
+        const newChatroomId = newChatroomRef?.key;
+
+        //create new group
+        const newGroupObj = {
+          id: id ? id : "",
+          name: name ? name : "",
+          chatroomId: newChatroomId ? newChatroomId : "",
+          isPinned: false,
+          type: "group",
+          admin: admin,
+        };
+
+        set(ref(database, `groups/${id}`), newGroupObj);
+
+        //add members to group
+        let group_members = [];
+        //adding admin to this group members list
+        let obj = {
+          id: "admin",
+          name: "admin",
+          isPinned: false,
+          created_at: new Date(),
+          deleted_at: new Date(),
+          unread_count: 0,
+        };
+        group_members.push(obj);
+
+        //adding current user(group admin) to this group members list
+        obj = {
+          id: admin,
+          name: this_user_name,
+          isPinned: false,
+          created_at: new Date(),
+          deleted_at: new Date(),
+          unread_count: 0,
+        };
+        group_members.push(obj);
+
+        if (membersList?.length > 0) {
+          for (const element of membersList) {
+            let obj = {
+              id: element?.id,
+              name: element?.name,
+              isPinned: false,
+              created_at: new Date(),
+              deleted_at: new Date(),
+              unread_count: 0,
+            };
+            group_members.push(obj);
+          }
+
+          let new_obj = {
+            members: group_members,
+          };
+          update(ref(database, `groups/${id}`), new_obj);
+        }
+
+        resolve(true);
+      } catch (error) {
+        console.log("error while creating new group", error);
+        resolve(false);
+      }
+    });
+  };
+
+  const addMembersToGroup = async () => {
+    const groupMembers = group?.members || [];
+    let clicked_user_Obj = {
+      // id: user?.id,
+      // name: user?.name,
+      // email: user?.email,
+      members: [
+        ...groupMembers,
+        {
+          id: user_id,
+          name: logged_in_user_detail?.first_name,
+          isPinned: false,
+          created_at: new Date(),
+          deleted_at: new Date(),
+          unread_count: 0,
+        },
+      ],
+    };
+    update(ref(database, `groups/${group?.id}`), clicked_user_Obj);
+  };
+
+  // add members in group
+
+  // ________________________________________Group Chat Using Firebase ________________________________________
 
   return (
     <View style={styles.container}>

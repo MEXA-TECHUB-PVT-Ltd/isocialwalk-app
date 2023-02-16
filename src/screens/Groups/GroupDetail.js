@@ -60,44 +60,7 @@ const GroupDetail = ({ navigation, route }) => {
 
   const [logged_in_user_id, setLogged_in_user_id] = useState("");
 
-  const [groupMembersList, setGroupMembersList] = useState([
-    // {
-    //   id: 0,
-    //   name: "Me",
-    //   avater: require("../../../assets/images/friend-profile.png"),
-    //   selected: false,
-    // },
-    // {
-    //   id: 1,
-    //   name: "Nahla",
-    //   avater: require("../../../assets/images/friend-profile.png"),
-    //   selected: false,
-    // },
-    // {
-    //   id: 2,
-    //   name: "Saffa",
-    //   avater: require("../../../assets/images/friend-profile.png"),
-    //   selected: false,
-    // },
-    // {
-    //   id: 3,
-    //   name: "Rui",
-    //   avater: require("../../../assets/images/friend-profile.png"),
-    //   selected: false,
-    // },
-    // {
-    //   id: 4,
-    //   name: "Anum",
-    //   avater: require("../../../assets/images/friend-profile.png"),
-    //   selected: false,
-    // },
-    // {
-    //   id: 5,
-    //   name: "Zaina",
-    //   avater: require("../../../assets/images/friend-profile.png"),
-    //   selected: false,
-    // },
-  ]);
+  const [groupMembersList, setGroupMembersList] = useState([]);
 
   const [allMembersList, setAllMembersList] = useState([
     {
@@ -545,11 +508,17 @@ const GroupDetail = ({ navigation, route }) => {
     let memberList = groupMembersList
       ?.filter((item) => item?.selected == true)
       ?.map((element) => element?.user_id);
+
     if (memberList?.length > 0) {
       setLoading(true);
+
       for (const element of memberList) {
         removeMember(element, groupId);
       }
+
+      //also remove members from firebase group members list
+      removeGroupMembers(groupId, memberList);
+
       setLoading(false);
       // const newData = groupMembersList.filter((item) => item?.selected === false);
       // setGroupMembersList(newData);
@@ -571,6 +540,7 @@ const GroupDetail = ({ navigation, route }) => {
     let memberList = addMembersList
       ?.filter((item) => item?.selected == true)
       ?.map((element) => element?.user_id);
+
     if (memberList?.length == 0) {
       Snackbar.show({
         text: "Please Select memeberes to add in group.",
@@ -602,6 +572,9 @@ const GroupDetail = ({ navigation, route }) => {
               text: "Successfully Added All Members in Group",
               duration: Snackbar.LENGTH_SHORT,
             });
+
+            addMemberToGroup(groupId, memberList); //also adding member to firebase for group chat
+
             //TODO: getting selected memberes to add in group
             const newData = addMembersList.filter(
               (item) => item?.selected === true
@@ -639,7 +612,6 @@ const GroupDetail = ({ navigation, route }) => {
     }
   };
   const handleExitGroup = async () => {
-    console.log("group id  ::: ", groupId);
     if (groupId != "") {
       setLoading(true);
       let user_id = await AsyncStorage.getItem("user_id");
@@ -660,6 +632,7 @@ const GroupDetail = ({ navigation, route }) => {
           console.log("result of remove member ", result);
           if (result[0]?.error == false || result[0]?.error == "false") {
             navigation.goBack();
+            existGroup(groupId); //handle exist group in firebase
             Snackbar.show({
               text: "Member removed from group successfully",
               duration: Snackbar.LENGTH_SHORT,
@@ -704,6 +677,7 @@ const GroupDetail = ({ navigation, route }) => {
           console.log("delete group response ::::  ", result);
           if (result[0]?.error == false || result[0]?.error == "false") {
             navigation.goBack();
+            handleDeleteGroupByAdmin(groupId); //also mark this group group as deleted in firebase
             Snackbar.show({
               text: "Group Deleted successfully",
               duration: Snackbar.LENGTH_SHORT,
@@ -834,6 +808,8 @@ const GroupDetail = ({ navigation, route }) => {
                   isPinned: false,
                   created_at: new Date(),
                   deleted_at: new Date(),
+                  remove_by_admin: false,
+                  leave_group: false,
                   unread_count: 0,
                   // created_at: moment(new Date()).add(1, "M"),
                 },
@@ -867,6 +843,155 @@ const GroupDetail = ({ navigation, route }) => {
     const database = getDatabase();
     const mySnapshot = await get(ref(database, `users/${id}`));
     return mySnapshot.val();
+  };
+
+  const removeGroupMembers = async (groupId, membersList = []) => {
+    try {
+      let group = await findGroup(groupId);
+      if (group) {
+        let list = group?.members ? group?.members : [];
+        // let filter = list.filter(
+        //   (member) => !membersList.find((m) => m == member.id)
+        // );
+
+        if (membersList?.length > 0) {
+          let newData = [];
+          for (const item of membersList) {
+            newData = list.map((element) => {
+              if (element?.id == item) {
+                return {
+                  ...element,
+                  // deleted_at: new Date(),
+                  remove_at: new Date(),
+                  remove_by_admin: true,
+                };
+              } else {
+                return {
+                  ...element,
+                };
+              }
+            });
+          }
+          const database = getDatabase();
+          let membersObj = {
+            members: newData,
+          };
+          update(ref(database, `groups/${groupId}`), membersObj);
+        }
+      } else {
+        console.log("group not stored in firebase database");
+      }
+    } catch (error) {
+      console.log("error :: ", error);
+    }
+  };
+
+  const addMemberToGroup = async (group_id, membersList) => {
+    let group = await findGroup(group_id);
+    if (group) {
+      let list = group?.members ? group?.members : [];
+      if (membersList?.length > 0) {
+        let newData = [];
+        for (const item of membersList) {
+          const filter = list?.filter((element) => element?.id == item);
+          if (filter?.length > 0) {
+            //already exist --> so update it
+            list = list.map((element) => {
+              if (element?.id == item) {
+                return {
+                  ...element,
+                  created_at: new Date(),
+                  deleted_at: new Date(),
+                  // remove_at: new Date(),
+                  remove_by_admin: false,
+                  leave_group: false,
+                };
+              } else {
+                return {
+                  ...element,
+                };
+              }
+            });
+          } else {
+            let user_info = await getUser_Info(item);
+            //create new user
+            let obj = {
+              id: item,
+              name: user_info?.first_name ? user_info?.first_name : "", //TODO: change with name letter on...
+              isPinned: false,
+              created_at: new Date(),
+              deleted_at: new Date(),
+              unread_count: 0,
+            };
+            list.push(obj);
+          }
+        }
+        const database = getDatabase();
+        let membersObj = {
+          members: list,
+        };
+        update(ref(database, `groups/${groupId}`), membersObj);
+      }
+
+      // let filter = group?.members?.filter((element) => element?.id == user_id);
+      // if (filter?.length > 0) {
+      //   //user already added in this group
+      // } else {
+      //   const groupMembers = group?.members || [];
+      //   let membersObj = {
+      //     members: [
+      //       ...groupMembers,
+      //       {
+      //         id: user_id,
+      //         name: user_name,
+      //         isPinned: false,
+      //         created_at: new Date(),
+      //         deleted_at: new Date(),
+      //         unread_count: 0,
+      //       },
+      //     ],
+      //   };
+      //   update(ref(database, `groups/${group_id}`), membersObj);
+      // }
+    }
+  };
+
+  const existGroup = async (groupId) => {
+    let user_id = await AsyncStorage.getItem("user_id");
+    let group = await findGroup(groupId);
+    if (group) {
+      let membersList = group?.members ? group?.members : [];
+      membersList = membersList?.map((element) => {
+        if (element?.id == user_id) {
+          return {
+            ...element,
+            leave_at: new Date(),
+            leave_group: true,
+          };
+        } else {
+          return { ...element };
+        }
+      });
+      let newObj = {
+        members: membersList,
+      };
+      const database = getDatabase();
+      update(ref(database, `groups/${groupId}`), newObj);
+    }
+  };
+
+  // change status of group that admin deleted this group
+  const handleDeleteGroupByAdmin = async (groupId) => {
+    let group = await findGroup(groupId);
+    if (group) {
+      console.log(group?.admin);
+      let obj = {
+        ...group,
+        deleted_by_admin: true,
+      };
+      const database = getDatabase();
+      update(ref(database, `groups/${groupId}`), obj);
+    }
   };
 
   // ------------------------------------------------handle group chat -----------------------------------------------------
@@ -953,6 +1078,7 @@ const GroupDetail = ({ navigation, route }) => {
             numberOfLines={1}
             navigation={navigation}
           />
+
           {logged_in_user_id == adminId ? (
             <TouchableOpacity
               onPress={() => handleEditPress(groupId)}
